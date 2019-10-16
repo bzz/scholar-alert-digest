@@ -27,7 +27,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bzz/scholar-alert-gmail-digest/gmailutils/token"
+	"github.com/bzz/scholar-alert-digest/gmailutils/token"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"

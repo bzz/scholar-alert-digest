@@ -1,4 +1,4 @@
-module github.com/bzz/scholar-alert-gmail-digest
+module github.com/bzz/scholar-alert-digest
 
 go 1.12
 

@@ -27,7 +27,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bzz/scholar-alert-gmail-digest/gmailutils"
+	"github.com/bzz/scholar-alert-digest/gmailutils"
 
 	"github.com/antchfx/htmlquery"
 	"golang.org/x/net/context"
