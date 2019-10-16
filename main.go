@@ -19,9 +19,11 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"log"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 
@@ -32,13 +34,28 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
-const scholarURL = "http://scholar.google.com/scholar_url?url="
+const (
+	labelName  = "[-oss-]-_ml_in_se"
+	scholarURL = "http://scholar.google.com/scholar_url?url="
+
+	usageMessage = `usage: go run [-l <your-gmail-label>]
+
+Polls unread Google Scholar messaged under a given label from GMail though the API
+aggregates them by paper and outputs a Markdown list of paper URLs.
+`
+)
 
 var (
-	user      = "me"
-	labelName = "[-oss-]-_ml_in_se"
-	query     = fmt.Sprintf("label:%s is:unread", labelName)
+	user  = "me"
+	query = fmt.Sprintf("label:%s is:unread", labelName)
+
+	gmailLabel = flag.String("l", labelName, "write cpu profile to this file")
 )
+
+func usage() {
+	fmt.Fprintf(os.Stderr, usageMessage)
+	os.Exit(2)
+}
 
 type sortedMap struct {
 	m map[paper]int
@@ -67,12 +84,16 @@ type paper struct {
 }
 
 func main() {
+	flag.Usage = usage
+	flag.Parse()
+
 	client := gmailutils.NewClient()
 	srv, err := gmail.New(client)
 	if err != nil {
 		log.Fatalf("Unable to retrieve Gmail client: %v", err)
 	}
 
+	log.Printf("Searching for all unread messages under Gmail label %q", *gmailLabel)
 	page := 0
 	var messages []*gmail.Message
 	err = srv.Users.Messages.List(user).Q(query).Pages(context.TODO(), func(rm *gmail.ListMessagesResponse) error {
@@ -90,10 +111,10 @@ func main() {
 		log.Fatalf("Unable to retrieve messages with query %q, page %d: %v", query, page, err)
 	}
 
+	log.Printf("%d unread messages found", len(messages))
 	errCount := 0
 	totalTitles := 0
 	uniqTitlesCount := map[paper]int{}
-	fmt.Printf("Un-read messages: %d\n", len(messages))
 	for _, m := range messages {
 		subj := gmailutils.Subject(m.Payload)
 
