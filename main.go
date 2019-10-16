@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -32,6 +33,8 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
+const scholarURL = "http://scholar.google.com/scholar_url?url="
+
 var (
 	user      = "me"
 	labelName = "[-oss-]-_ml_in_se"
@@ -39,18 +42,18 @@ var (
 )
 
 type sortedMap struct {
-	m map[string]int
-	s []string
+	m map[paper]int
+	s []paper
 }
 
 func (sm *sortedMap) Len() int           { return len(sm.m) }
 func (sm *sortedMap) Less(i, j int) bool { return sm.m[sm.s[i]] > sm.m[sm.s[j]] }
 func (sm *sortedMap) Swap(i, j int)      { sm.s[i], sm.s[j] = sm.s[j], sm.s[i] }
 
-func sortedKeys(m map[string]int) []string {
+func sortedKeys(m map[paper]int) []paper {
 	sm := new(sortedMap)
 	sm.m = m
-	sm.s = make([]string, len(m))
+	sm.s = make([]paper, len(m))
 	i := 0
 	for key := range m {
 		sm.s[i] = key
@@ -58,6 +61,10 @@ func sortedKeys(m map[string]int) []string {
 	}
 	sort.Sort(sm)
 	return sm.s
+}
+
+type paper struct {
+	title, url string
 }
 
 func main() {
@@ -86,7 +93,7 @@ func main() {
 
 	errCount := 0
 	totalTitles := 0
-	uniqTitlesCount := map[string]int{}
+	uniqTitlesCount := map[paper]int{}
 	fmt.Printf("Un-read messages: %d\n", len(messages))
 	for _, m := range messages {
 		subj := gmailutils.Subject(m.Payload)
@@ -105,18 +112,40 @@ func main() {
 			continue
 		}
 
-		// text //h3/a
-		xp := "//h3/a"
-		paperTitles, err := htmlquery.QueryAll(doc, xp)
+		// get paper titles
+		xpTitle := "//h3/a"
+		titles, err := htmlquery.QueryAll(doc, xpTitle)
 		if err != nil {
-			fmt.Printf("Not valid XPath expression %q\n", xp)
+			fmt.Printf("Not valid XPath expression %q\n", xpTitle)
 		}
-		// fmt.Printf(" - %s (%d)\n", subj, len(paperTitles))
-		totalTitles += len(paperTitles)
+		totalTitles += len(titles)
 
-		for _, titleA := range paperTitles {
-			t := strings.TrimSpace(htmlquery.InnerText(titleA))
-			uniqTitlesCount[t]++
+		// get paper urls
+		xpURL := "//h3/a/@href"
+		urls, err := htmlquery.QueryAll(doc, xpURL)
+		if err != nil {
+			fmt.Printf("Not valid XPath expression %q\n", xpURL)
+		}
+
+		if len(titles) != len(urls) {
+			fmt.Printf("Titles %d != %d urls in %q. Skipping email\n", len(titles), len(urls), subj)
+			errCount++
+			continue
+		}
+
+		// fmt.Printf(" - %s (%d)\n", subj, len(paperTitles))
+		for i, aTitle := range titles {
+			title := strings.TrimSpace(htmlquery.InnerText(aTitle))
+
+			u := strings.TrimPrefix(htmlquery.InnerText(urls[i]), scholarURL)
+			url, err := url.QueryUnescape(u[:strings.Index(u, "&")])
+			if err != nil {
+				fmt.Printf("Skipping paper %q: %s\n", title, err)
+				continue
+			}
+
+			p := paper{title, url}
+			uniqTitlesCount[p]++
 		}
 	}
 
@@ -124,9 +153,8 @@ func main() {
 	fmt.Printf("Uniq paper titles: %d\n", len(uniqTitlesCount))
 
 	// TODO(bzz): generate Markdown
-	// url: parse "//h3/a/@href" up to '&', drop refix "http://scholar.google.com/scholar_url?"
-	for _, title := range sortedKeys(uniqTitlesCount) {
-		fmt.Printf(" - %s (%d)\n", title, uniqTitlesCount[title])
+	for _, paper := range sortedKeys(uniqTitlesCount) {
+		fmt.Printf(" - [%s](%s) (%d)\n", paper.title, paper.url, uniqTitlesCount[paper])
 	}
 
 	if errCount != 0 {
