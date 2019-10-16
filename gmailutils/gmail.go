@@ -1,4 +1,21 @@
-// Package gmailutils provides helpers for Gmail API
+/**
+ * Copyright Google Inc.
+ * Copyright 2019 Alexander Bezzubov.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Package gmailutils provides helpers for Gmail API.
 package gmailutils
 
 import (
@@ -62,20 +79,21 @@ func Subject(m *gmail.MessagePart) string {
 
 // MessageTextBody returns the text (if any) of a given message ID
 func MessageTextBody(m *gmail.Message) ([]byte, error) {
-	body, _, err := recurse(m.Payload, "text/html")
+	body, _, err := recursiveDecodeParts(m.Payload, "text/html")
 	if body == nil {
 		return nil, errors.New("no message payload")
 	}
 	return body, err
 }
 
-func recurse(part *gmail.MessagePart, mimeType string) ([]byte, string, error) {
+func recursiveDecodeParts(part *gmail.MessagePart, mimeType string) ([]byte, string, error) {
 	if part == nil || part.Body == nil {
 		return nil, "", nil
 	}
+
 	var gotError error
 	for _, p := range part.Parts {
-		b, m, err := recurse(p, mimeType)
+		b, m, err := recursiveDecodeParts(p, mimeType)
 		if b != nil || m != "" {
 			return b, m, err
 		}
@@ -83,6 +101,7 @@ func recurse(part *gmail.MessagePart, mimeType string) ([]byte, string, error) {
 			gotError = err
 		}
 	}
+
 	switch {
 	case strings.HasPrefix(part.MimeType, mimeType):
 		if part.Body.AttachmentId != "" {
