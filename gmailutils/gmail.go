@@ -39,7 +39,7 @@ import (
 func NewClient() *http.Client {
 	b, err := ioutil.ReadFile("credentials.json")
 	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
+		log.Fatalf("Unable to read client secret file: %v\nPlease follow https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the", err)
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.

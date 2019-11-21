@@ -8,8 +8,28 @@ a Gmail label from the Google Scholar alerts, grouping papers by title and produ
 
  1. Search on Google Scholar for a paper of author
  2. Create an Alert (for citations, new or similar publications)
- 3. Create a GMail filter, moving all those emails under a dedicated Label
+ 3. Create a Gmail filter, moving all those emails under a dedicated Label
  4. Run this tool to get an aggregated Markdown report of all the paper from all unread emails
+
+# Install
+
+Either build a `scholar-alert-digest` binary and put it under `$GOPATH/bin` with:
+
+```
+cd "$(mktemp -d)" && go mod init scholar-alert-digest  && go get github.com/bzz/scholar-alert-digest
+```
+
+Or using a recent version of [`git`](https://git-scm.com) and [`go`](https://golang.org) do:
+
+```
+git clone https://github.com/bzz/scholar-alert-digest.git
+cd scholar-alert-digest
+```
+
+# Configure
+
+Turn on Gmail API & download `credentials.json` following [these steps](https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the).
+_It will require authorizing a 'Quickstart' app to get read-only access to your Gmail account_
 
 # Run
 
