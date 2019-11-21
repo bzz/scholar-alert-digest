@@ -17,9 +17,16 @@ To find your specific label name:
 
 `go run main.go -labels`
 
-To generate the report:
+To generate the report, either pass the label name though CLI:
 
-`go run main.go -l <your-label-name>`
+`go run main.go -l '<your-label-name>'`
+
+Or export it as an env var:
+
+```shell
+export SAD_LABEL='<your-label-name>'
+go run main.go
+```
 
 # License
 

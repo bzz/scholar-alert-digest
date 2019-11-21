@@ -83,6 +83,9 @@ func main() {
 		os.Exit(0)
 	}
 
+	if envLabel, ok := os.LookupEnv("SAD_LABEL"); ok {
+		gmailLabel = &envLabel
+	}
 	var messages []*gmail.Message = gmailutils.UnreadMessagesInLabel(srv, user, *gmailLabel)
 
 	log.Printf("%d unread messages found", len(messages))
