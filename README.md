@@ -2,7 +2,7 @@
 > aggregate google scholar email alerts by paper
 
 Simplifies scientific paper discovery by aggregating all unread emails under
-a Gmail label from the Google Scholar alerts, grouping papers by title and producing a report in Markdown.
+a Gmail label from the Google Scholar alerts, grouping papers by title and producing a report in Markdown ([example](https://gist.github.com/bzz/dc13255d110c7f4a3d0321a695adb185)).
 
 # Workflow
 
