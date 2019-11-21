@@ -26,6 +26,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 
@@ -170,7 +171,6 @@ func main() {
 			continue
 		}
 
-		// fmt.Printf(" - %s (%d)\n", subj, len(paperTitles))
 		for i, aTitle := range titles {
 			title := strings.TrimSpace(htmlquery.InnerText(aTitle))
 
@@ -186,12 +186,18 @@ func main() {
 		}
 	}
 
-	fmt.Printf("Total paper titles: %d\n", totalTitles)
-	fmt.Printf("Uniq paper titles: %d\n", len(uniqTitlesCount))
+	fmt.Printf("Date: %s\n", time.Now().Format(time.RFC3339))
+	fmt.Printf("Unread emails: %d\n", len(messages))
+	fmt.Printf("Paper titles: %d\n", totalTitles)
+	fmt.Printf("Uniq paper titles: %d\n\n", len(uniqTitlesCount))
 
-	// TODO(bzz): generate Markdown
+	// TODO(bzz):
+	//  update existing report \w checkbox state, instead of always generating a new one
+	//  mark emails as "read", when all the links are checked off
+
+	// generate Markdown report
 	for _, paper := range sortedKeys(uniqTitlesCount) {
-		fmt.Printf(" - [%s](%s) (%d)\n", paper.title, paper.url, uniqTitlesCount[paper])
+		fmt.Printf(" - [ ] [%s](%s) (%d)\n", paper.title, paper.url, uniqTitlesCount[paper])
 	}
 
 	if errCount != 0 {
