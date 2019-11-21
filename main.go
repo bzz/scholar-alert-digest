@@ -35,13 +35,15 @@ import (
 )
 
 const (
-	labelName  = "[-oss-]-_ml_in_se"
+	labelName  = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
 	scholarURL = "http://scholar.google.com/scholar_url?url="
 
-	usageMessage = `usage: go run [-l <your-gmail-label>]
+	usageMessage = `usage: go run [-labels] [-l <your-gmail-label>]
 
-Polls unread Google Scholar messaged under a given label from GMail though the API
-aggregates them by paper and outputs a Markdown list of paper URLs.
+Polls Gmail API for unread Google Scholar alert messaged under a given label,
+aggregates by paper titles and prints a list of paper URLs in Markdown.
+
+The -labels flag will only list all available labels for the current account.
 `
 )
 
@@ -49,12 +51,13 @@ var (
 	user  = "me"
 	query = fmt.Sprintf("label:%s is:unread", labelName)
 
-	gmailLabel = flag.String("l", labelName, "write cpu profile to this file")
+	gmailLabel = flag.String("l", labelName, "name of the Gmail label")
+	listLabels = flag.Bool("labels", false, "list all Gmail labels")
 )
 
 func usage() {
 	fmt.Fprintf(os.Stderr, usageMessage)
-	os.Exit(2)
+	os.Exit(0)
 }
 
 type sortedMap struct {
@@ -91,6 +94,20 @@ func main() {
 	srv, err := gmail.New(client)
 	if err != nil {
 		log.Fatalf("Unable to retrieve Gmail client: %v", err)
+	}
+
+	if *listLabels {
+		log.Printf("Listing all Gmail labels")
+		lablesResp, err := srv.Users.Labels.List(user).Do()
+		if err != nil {
+			log.Fatalf("Unable to retrieve all labels: %v", err)
+		}
+
+		log.Printf("%d labels found", len(lablesResp.Labels))
+		for _, label := range lablesResp.Labels {
+			fmt.Printf("%s\n", label.Name)
+		}
+		os.Exit(0)
 	}
 
 	log.Printf("Searching for all unread messages under Gmail label %q", *gmailLabel)
