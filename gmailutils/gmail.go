@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -34,7 +35,7 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
-// NewClient returns a client using 'credentials.json' and a 'token.json' (lazy)
+// NewClient a client configured with OAuth using 'credentials.json' and a 'token.json'.
 func NewClient() *http.Client {
 	b, err := ioutil.ReadFile("credentials.json")
 	if err != nil {
@@ -49,7 +50,7 @@ func NewClient() *http.Client {
 	return getClient(config)
 }
 
-// Retrieve a token, saves the token, then returns the generated client.
+// Retrieve an OAuth token, saves it, then returns a pre-configured client.
 func getClient(config *oauth2.Config) *http.Client {
 	// The file token.json stores the user's access and refresh tokens, and is
 	// created automatically when the authorization flow completes for the first
@@ -61,6 +62,35 @@ func getClient(config *oauth2.Config) *http.Client {
 		token.Save(tokFile, tok)
 	}
 	return config.Client(context.Background(), tok)
+}
+
+// UnreadMessagesInLabel returns unread messages under a given lable.
+func UnreadMessagesInLabel(srv *gmail.Service, user, labelName string) []*gmail.Message {
+	log.Printf("Searching for all unread messages under Gmail label %q", labelName)
+	query := fmt.Sprintf("label:%s is:unread", labelName)
+	return queryMessages(srv, user, query)
+}
+
+// queryMessages returns all messages matching a query for a given user.
+func queryMessages(srv *gmail.Service, user, query string) []*gmail.Message {
+	var messages []*gmail.Message
+	page := 0 // iterate pages
+	err := srv.Users.Messages.List(user).Q(query).Pages(context.TODO(), func(rm *gmail.ListMessagesResponse) error {
+		for _, m := range rm.Messages {
+			msg, err := srv.Users.Messages.Get(user, m.Id).Do()
+			if err != nil {
+				return err
+			}
+
+			messages = append(messages, msg)
+		}
+		return nil
+	})
+	if err != nil {
+		log.Fatalf("Unable to retrieve messages with query %q, page %d: %v", query, page, err)
+	}
+
+	return messages
 }
 
 // Subject returns the Subject header of a message

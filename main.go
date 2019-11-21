@@ -31,7 +31,6 @@ import (
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 
 	"github.com/antchfx/htmlquery"
-	"golang.org/x/net/context"
 	"google.golang.org/api/gmail/v1"
 )
 
@@ -49,8 +48,7 @@ The -labels flag will only list all available labels for the current account.
 )
 
 var (
-	user  = "me"
-	query = fmt.Sprintf("label:%s is:unread", labelName)
+	user = "me"
 
 	gmailLabel = flag.String("l", labelName, "name of the Gmail label")
 	listLabels = flag.Bool("labels", false, "list all Gmail labels")
@@ -61,32 +59,6 @@ func usage() {
 	os.Exit(0)
 }
 
-type sortedMap struct {
-	m map[paper]int
-	s []paper
-}
-
-func (sm *sortedMap) Len() int           { return len(sm.m) }
-func (sm *sortedMap) Less(i, j int) bool { return sm.m[sm.s[i]] > sm.m[sm.s[j]] }
-func (sm *sortedMap) Swap(i, j int)      { sm.s[i], sm.s[j] = sm.s[j], sm.s[i] }
-
-func sortedKeys(m map[paper]int) []paper {
-	sm := new(sortedMap)
-	sm.m = m
-	sm.s = make([]paper, len(m))
-	i := 0
-	for key := range m {
-		sm.s[i] = key
-		i++
-	}
-	sort.Sort(sm)
-	return sm.s
-}
-
-type paper struct {
-	title, url string
-}
-
 func main() {
 	flag.Usage = usage
 	flag.Parse()
@@ -94,7 +66,7 @@ func main() {
 	client := gmailutils.NewClient()
 	srv, err := gmail.New(client)
 	if err != nil {
-		log.Fatalf("Unable to retrieve Gmail client: %v", err)
+		log.Fatalf("Unable to create a Gmail client: %v", err)
 	}
 
 	if *listLabels {
@@ -111,23 +83,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.Printf("Searching for all unread messages under Gmail label %q", *gmailLabel)
-	page := 0
-	var messages []*gmail.Message
-	err = srv.Users.Messages.List(user).Q(query).Pages(context.TODO(), func(rm *gmail.ListMessagesResponse) error {
-		for _, m := range rm.Messages {
-			msg, err := srv.Users.Messages.Get(user, m.Id).Do()
-			if err != nil {
-				return err
-			}
-
-			messages = append(messages, msg)
-		}
-		return nil
-	})
-	if err != nil {
-		log.Fatalf("Unable to retrieve messages with query %q, page %d: %v", query, page, err)
-	}
+	var messages []*gmail.Message = gmailutils.UnreadMessagesInLabel(srv, user, *gmailLabel)
 
 	log.Printf("%d unread messages found", len(messages))
 	errCount := 0
@@ -150,7 +106,7 @@ func main() {
 			continue
 		}
 
-		// get paper titles
+		// paper titles, from a single email
 		xpTitle := "//h3/a"
 		titles, err := htmlquery.QueryAll(doc, xpTitle)
 		if err != nil {
@@ -158,7 +114,7 @@ func main() {
 		}
 		totalTitles += len(titles)
 
-		// get paper urls
+		// paper urls, from a single email
 		xpURL := "//h3/a/@href"
 		urls, err := htmlquery.QueryAll(doc, xpURL)
 		if err != nil {
@@ -171,7 +127,7 @@ func main() {
 			continue
 		}
 
-		for i, aTitle := range titles {
+		for i, aTitle := range titles { // titles -> uniqTitlesCount
 			title := strings.TrimSpace(htmlquery.InnerText(aTitle))
 
 			u := strings.TrimPrefix(htmlquery.InnerText(urls[i]), scholarURL)
@@ -203,4 +159,32 @@ func main() {
 	if errCount != 0 {
 		fmt.Printf("Errors: %d\n", errCount)
 	}
+}
+
+// Helpers for a Map, sorted by keys.
+// TODO(bzz): move to map.go after `go run main.go` is replaced by ./cmd/report
+type sortedMap struct {
+	m map[paper]int
+	s []paper
+}
+
+func (sm *sortedMap) Len() int           { return len(sm.m) }
+func (sm *sortedMap) Less(i, j int) bool { return sm.m[sm.s[i]] > sm.m[sm.s[j]] }
+func (sm *sortedMap) Swap(i, j int)      { sm.s[i], sm.s[j] = sm.s[j], sm.s[i] }
+
+func sortedKeys(m map[paper]int) []paper {
+	sm := new(sortedMap)
+	sm.m = m
+	sm.s = make([]paper, len(m))
+	i := 0
+	for key := range m {
+		sm.s[i] = key
+		i++
+	}
+	sort.Sort(sm)
+	return sm.s
+}
+
+type paper struct {
+	title, url string
 }
