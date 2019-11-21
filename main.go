@@ -26,37 +26,146 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 
 	"github.com/antchfx/htmlquery"
-	"golang.org/x/net/context"
 	"google.golang.org/api/gmail/v1"
 )
 
 const (
-	labelName  = "[-oss-]-_ml_in_se"
+	labelName  = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
 	scholarURL = "http://scholar.google.com/scholar_url?url="
 
-	usageMessage = `usage: go run [-l <your-gmail-label>]
+	usageMessage = `usage: go run [-labels] [-l <your-gmail-label>]
 
-Polls unread Google Scholar messaged under a given label from GMail though the API
-aggregates them by paper and outputs a Markdown list of paper URLs.
+Polls Gmail API for unread Google Scholar alert messaged under a given label,
+aggregates by paper titles and prints a list of paper URLs in Markdown.
+
+The -labels flag will only list all available labels for the current account.
 `
 )
 
 var (
-	user  = "me"
-	query = fmt.Sprintf("label:%s is:unread", labelName)
+	user = "me"
 
-	gmailLabel = flag.String("l", labelName, "write cpu profile to this file")
+	gmailLabel = flag.String("l", labelName, "name of the Gmail label")
+	listLabels = flag.Bool("labels", false, "list all Gmail labels")
 )
 
 func usage() {
 	fmt.Fprintf(os.Stderr, usageMessage)
-	os.Exit(2)
+	os.Exit(0)
 }
 
+func main() {
+	flag.Usage = usage
+	flag.Parse()
+
+	client := gmailutils.NewClient()
+	srv, err := gmail.New(client)
+	if err != nil {
+		log.Fatalf("Unable to create a Gmail client: %v", err)
+	}
+
+	if *listLabels {
+		log.Printf("Listing all Gmail labels")
+		lablesResp, err := srv.Users.Labels.List(user).Do()
+		if err != nil {
+			log.Fatalf("Unable to retrieve all labels: %v", err)
+		}
+
+		log.Printf("%d labels found", len(lablesResp.Labels))
+		for _, label := range lablesResp.Labels {
+			fmt.Printf("%s\n", label.Name)
+		}
+		os.Exit(0)
+	}
+
+	if envLabel, ok := os.LookupEnv("SAD_LABEL"); ok {
+		gmailLabel = &envLabel
+	}
+	var messages []*gmail.Message = gmailutils.UnreadMessagesInLabel(srv, user, *gmailLabel)
+
+	log.Printf("%d unread messages found", len(messages))
+	errCount := 0
+	totalTitles := 0
+	uniqTitlesCount := map[paper]int{}
+	for _, m := range messages {
+		subj := gmailutils.Subject(m.Payload)
+
+		body, err := gmailutils.MessageTextBody(m)
+		if err != nil {
+			fmt.Printf("Failed to get message text for ID %s - %s\n", m.Id, err)
+			errCount++
+			continue
+		}
+
+		doc, err := htmlquery.Parse(bytes.NewReader(body))
+		if err != nil {
+			fmt.Printf("Failed to parse HTML body of %q\n", subj)
+			errCount++
+			continue
+		}
+
+		// paper titles, from a single email
+		xpTitle := "//h3/a"
+		titles, err := htmlquery.QueryAll(doc, xpTitle)
+		if err != nil {
+			fmt.Printf("Not valid XPath expression %q\n", xpTitle)
+		}
+		totalTitles += len(titles)
+
+		// paper urls, from a single email
+		xpURL := "//h3/a/@href"
+		urls, err := htmlquery.QueryAll(doc, xpURL)
+		if err != nil {
+			fmt.Printf("Not valid XPath expression %q\n", xpURL)
+		}
+
+		if len(titles) != len(urls) {
+			fmt.Printf("Titles %d != %d urls in %q. Skipping email\n", len(titles), len(urls), subj)
+			errCount++
+			continue
+		}
+
+		for i, aTitle := range titles { // titles -> uniqTitlesCount
+			title := strings.TrimSpace(htmlquery.InnerText(aTitle))
+
+			u := strings.TrimPrefix(htmlquery.InnerText(urls[i]), scholarURL)
+			url, err := url.QueryUnescape(u[:strings.Index(u, "&")])
+			if err != nil {
+				fmt.Printf("Skipping paper %q: %s\n", title, err)
+				continue
+			}
+
+			p := paper{title, url}
+			uniqTitlesCount[p]++
+		}
+	}
+
+	fmt.Printf("Date: %s\n", time.Now().Format(time.RFC3339))
+	fmt.Printf("Unread emails: %d\n", len(messages))
+	fmt.Printf("Paper titles: %d\n", totalTitles)
+	fmt.Printf("Uniq paper titles: %d\n\n", len(uniqTitlesCount))
+
+	// TODO(bzz):
+	//  update existing report \w checkbox state, instead of always generating a new one
+	//  mark emails as "read", when all the links are checked off
+
+	// generate Markdown report
+	for _, paper := range sortedKeys(uniqTitlesCount) {
+		fmt.Printf(" - [ ] [%s](%s) (%d)\n", paper.title, paper.url, uniqTitlesCount[paper])
+	}
+
+	if errCount != 0 {
+		fmt.Printf("Errors: %d\n", errCount)
+	}
+}
+
+// Helpers for a Map, sorted by keys.
+// TODO(bzz): move to map.go after `go run main.go` is replaced by ./cmd/report
 type sortedMap struct {
 	m map[paper]int
 	s []paper
@@ -81,103 +190,4 @@ func sortedKeys(m map[paper]int) []paper {
 
 type paper struct {
 	title, url string
-}
-
-func main() {
-	flag.Usage = usage
-	flag.Parse()
-
-	client := gmailutils.NewClient()
-	srv, err := gmail.New(client)
-	if err != nil {
-		log.Fatalf("Unable to retrieve Gmail client: %v", err)
-	}
-
-	log.Printf("Searching for all unread messages under Gmail label %q", *gmailLabel)
-	page := 0
-	var messages []*gmail.Message
-	err = srv.Users.Messages.List(user).Q(query).Pages(context.TODO(), func(rm *gmail.ListMessagesResponse) error {
-		for _, m := range rm.Messages {
-			msg, err := srv.Users.Messages.Get(user, m.Id).Do()
-			if err != nil {
-				return err
-			}
-
-			messages = append(messages, msg)
-		}
-		return nil
-	})
-	if err != nil {
-		log.Fatalf("Unable to retrieve messages with query %q, page %d: %v", query, page, err)
-	}
-
-	log.Printf("%d unread messages found", len(messages))
-	errCount := 0
-	totalTitles := 0
-	uniqTitlesCount := map[paper]int{}
-	for _, m := range messages {
-		subj := gmailutils.Subject(m.Payload)
-
-		body, err := gmailutils.MessageTextBody(m)
-		if err != nil {
-			fmt.Printf("Failed to get message text for ID %s - %s\n", m.Id, err)
-			errCount++
-			continue
-		}
-
-		doc, err := htmlquery.Parse(bytes.NewReader(body))
-		if err != nil {
-			fmt.Printf("Failed to parse HTML body of %q\n", subj)
-			errCount++
-			continue
-		}
-
-		// get paper titles
-		xpTitle := "//h3/a"
-		titles, err := htmlquery.QueryAll(doc, xpTitle)
-		if err != nil {
-			fmt.Printf("Not valid XPath expression %q\n", xpTitle)
-		}
-		totalTitles += len(titles)
-
-		// get paper urls
-		xpURL := "//h3/a/@href"
-		urls, err := htmlquery.QueryAll(doc, xpURL)
-		if err != nil {
-			fmt.Printf("Not valid XPath expression %q\n", xpURL)
-		}
-
-		if len(titles) != len(urls) {
-			fmt.Printf("Titles %d != %d urls in %q. Skipping email\n", len(titles), len(urls), subj)
-			errCount++
-			continue
-		}
-
-		// fmt.Printf(" - %s (%d)\n", subj, len(paperTitles))
-		for i, aTitle := range titles {
-			title := strings.TrimSpace(htmlquery.InnerText(aTitle))
-
-			u := strings.TrimPrefix(htmlquery.InnerText(urls[i]), scholarURL)
-			url, err := url.QueryUnescape(u[:strings.Index(u, "&")])
-			if err != nil {
-				fmt.Printf("Skipping paper %q: %s\n", title, err)
-				continue
-			}
-
-			p := paper{title, url}
-			uniqTitlesCount[p]++
-		}
-	}
-
-	fmt.Printf("Total paper titles: %d\n", totalTitles)
-	fmt.Printf("Uniq paper titles: %d\n", len(uniqTitlesCount))
-
-	// TODO(bzz): generate Markdown
-	for _, paper := range sortedKeys(uniqTitlesCount) {
-		fmt.Printf(" - [%s](%s) (%d)\n", paper.title, paper.url, uniqTitlesCount[paper])
-	}
-
-	if errCount != 0 {
-		fmt.Printf("Errors: %d\n", errCount)
-	}
 }
