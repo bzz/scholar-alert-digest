@@ -41,7 +41,7 @@ const (
 	usageMessage = `usage: go run [-labels] [-l <your-gmail-label>]
 
 Polls Gmail API for unread Google Scholar alert messaged under a given label,
-aggregates by paper titles and prints a list of paper URLs in Markdown.
+aggregates by paper title and prints a list of paper URLs in Markdown format.
 
 The -labels flag will only list all available labels for the current account.
 `
