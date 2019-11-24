@@ -64,11 +64,24 @@ func getClient(config *oauth2.Config) *http.Client {
 	return config.Client(context.Background(), tok)
 }
 
+// PrintAllLabels prints all labels for a given user.
+func PrintAllLabels(srv *gmail.Service, user string) {
+	log.Printf("Listing all Gmail labels")
+	lablesResp, err := srv.Users.Labels.List(user).Do()
+	if err != nil {
+		log.Fatalf("Unable to retrieve all labels: %v", err)
+	}
+
+	log.Printf("%d labels found", len(lablesResp.Labels))
+	for _, label := range lablesResp.Labels {
+		fmt.Printf("%s\n", label.Name)
+	}
+}
+
 // UnreadMessagesInLabel returns unread messages under a given lable.
 func UnreadMessagesInLabel(srv *gmail.Service, user, labelName string) []*gmail.Message {
 	log.Printf("Searching for all unread messages under Gmail label %q", labelName)
-	query := fmt.Sprintf("label:%s is:unread", labelName)
-	return queryMessages(srv, user, query)
+	return queryMessages(srv, user, fmt.Sprintf("label:%s is:unread", labelName))
 }
 
 // queryMessages returns all messages matching a query for a given user.

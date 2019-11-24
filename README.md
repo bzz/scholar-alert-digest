@@ -13,17 +13,19 @@ a Gmail label from the Google Scholar alerts, grouping papers by title and produ
 
 # Install
 
-Either build a `scholar-alert-digest` binary and put it under `$GOPATH/bin` with:
+Using a recent version of [`git`](https://git-scm.com) and [`go`](https://golang.org)
+either build a `scholar-alert-digest` binary and put it under `$GOPATH/bin` with:
 
 ```
 cd "$(mktemp -d)" && go mod init scholar-alert-digest  && go get github.com/bzz/scholar-alert-digest
 ```
 
-Or using a recent version of [`git`](https://git-scm.com) and [`go`](https://golang.org) do:
+or run from the sources by:
 
 ```
 git clone https://github.com/bzz/scholar-alert-digest.git
 cd scholar-alert-digest
+go run main.go -h
 ```
 
 # Configure
