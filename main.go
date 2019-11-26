@@ -93,7 +93,7 @@ func main() {
 }
 
 func generateMarkdownReport(messagesCount, titlesCount int, uniqTitles map[paper]int) {
-	// TODO(bzz): convert to text/template, as soon as it becomes more complex
+	// TODO(bzz): convert to text/template
 	fmt.Printf("Date: %s\n", time.Now().Format(time.RFC3339))
 	fmt.Printf("Unread emails: %d\n", messagesCount)
 	fmt.Printf("Paper titles: %d\n", titlesCount)
@@ -102,7 +102,20 @@ func generateMarkdownReport(messagesCount, titlesCount int, uniqTitles map[paper
 	// TODO(bzz): use a stable sort
 	for _, paper := range sortedKeys(uniqTitles) {
 		fmt.Printf(" - [ ] [%s](%s) (%d)\n", paper.title, paper.url, uniqTitles[paper])
+		firstLine, theRest := separateFirstLine(paper.abstract)
+		fmt.Printf(`   <details>
+		<summary>Abstract: %s ...</summary>`, firstLine)
+		fmt.Printf("%s\n   </details>\n", theRest)
 	}
+}
+
+func separateFirstLine(text string) (string, string) {
+	text = strings.ReplaceAll(text, "\n", "")
+	n := 80 // TODO(bzz): whitespace-aware splitting alg capped by max N
+	if len(text) < n {
+		return text, ""
+	}
+	return text[:n], text[n:]
 }
 
 // fetchGmailMsgs fetches all unread messages under a certain lable from Gmail.
@@ -120,7 +133,7 @@ func extractPapersFromMsgs(messages []*gmail.Message) (int, int, map[paper]int) 
 	uniqTitles := map[paper]int{}
 
 	for _, m := range messages {
-		papers, err := extractAllPapers(m)
+		papers, err := extractPapersFromMsg(m)
 		if err != nil {
 			errCount++
 			continue
@@ -135,7 +148,7 @@ func extractPapersFromMsgs(messages []*gmail.Message) (int, int, map[paper]int) 
 	return errCount, titlesCount, uniqTitles
 }
 
-func extractAllPapers(m *gmail.Message) ([]paper, error) {
+func extractPapersFromMsg(m *gmail.Message) ([]paper, error) {
 	subj := gmailutils.Subject(m.Payload)
 
 	body, err := gmailutils.MessageTextBody(m)
@@ -169,9 +182,17 @@ func extractAllPapers(m *gmail.Message) ([]paper, error) {
 		return nil, e
 	}
 
+	// paper abstract
+	xpAbs := "//h3/following-sibling::div[2]"
+	abss, err := htmlquery.QueryAll(doc, xpAbs)
+	if err != nil {
+		return nil, fmt.Errorf("abstract: not valid XPath expression %q", xpAbs)
+	}
+
 	var papers []paper
 	for i, aTitle := range titles {
 		title := strings.TrimSpace(htmlquery.InnerText(aTitle))
+		abs := strings.TrimSpace(htmlquery.InnerText(abss[i]))
 
 		longURL := strings.TrimPrefix(htmlquery.InnerText(urls[i]), scholarURL)
 		url, err := url.QueryUnescape(longURL[:strings.Index(longURL, "&")])
@@ -180,7 +201,7 @@ func extractAllPapers(m *gmail.Message) ([]paper, error) {
 			continue
 		}
 
-		papers = append(papers, paper{title, url})
+		papers = append(papers, paper{title, url, abs})
 	}
 	return papers, nil
 }
@@ -210,5 +231,5 @@ func sortedKeys(m map[paper]int) []paper {
 }
 
 type paper struct {
-	title, url string
+	title, url, abstract string
 }
