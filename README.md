@@ -2,14 +2,14 @@
 > aggregate google scholar email alerts by paper
 
 Simplifies scientific paper discovery by aggregating all unread emails under
-a Gmail label from the Google Scholar alerts, grouping papers by title and producing a report in Markdown ([example](https://gist.github.com/bzz/1e8445f71db03a7d57d94147279ee09f)).
+a Gmail label from the Google Scholar alerts, grouping papers by title and producing a report ([Markdown](https://gist.github.com/bzz/1e8445f71db03a7d57d94147279ee09f)/[HTML](https://gist.github.com/bzz/e1e3ef3e0cdabc254f4e75bfa5511bcb)).
 
 # Workflow
 
  1. Search on Google Scholar for a paper of author
  2. Create an Alert (for citations, new or similar publications)
  3. Create a Gmail filter, moving all those emails under a dedicated Label
- 4. Run this tool to get an aggregated Markdown report of all the paper from all unread emails
+ 4. Run this tool to get an aggregated report (in Markdown or HTML) of all the paper from all unread emails
 
 # Install
 
@@ -48,6 +48,11 @@ Or export it as an env var:
 ```shell
 export SAD_LABEL='<your-label-name>'
 go run main.go
+```
+
+In order to output rendered HTML instead of the default Markdown, use
+```
+go run main.go -html
 ```
 
 # License
