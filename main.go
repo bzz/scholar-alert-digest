@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -32,6 +33,7 @@ import (
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 
 	"github.com/antchfx/htmlquery"
+	"gitlab.com/golang-commonmark/markdown"
 	"google.golang.org/api/gmail/v1"
 )
 
@@ -39,12 +41,35 @@ const (
 	labelName  = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
 	scholarURL = "http://scholar.google.com/scholar_url?url="
 
-	usageMessage = `usage: go run [-labels] [-l <your-gmail-label>]
+	usageMessage = `usage: go run [-labels] [-html] [-l <your-gmail-label>]
 
 Polls Gmail API for unread Google Scholar alert messaged under a given label,
 aggregates by paper title and prints a list of paper URLs in Markdown format.
 
 The -labels flag will only list all available labels for the current account.
+The -html flag will produce ouput report in HTML format.
+`
+
+	mdTemplText = `**Date**: {{.Date}}
+**Unread emails**: {{.UnreadEmails}}
+**Paper titles**: {{.TotalPapers}}
+**Uniq paper titles**: {{.UniqPapers}}
+
+{{ range $paper := sortedKeys .Papers }}
+ - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
+   {{- if .Abstract.Full }}
+   <details>
+    <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
+   </details>
+   {{ end }}
+{{ end }}
+`
+
+	htmlTemplText = `<!DOCTYPE html>
+<html lang="en">
+  <head><meta charset="UTF-8"></head>
+  <body>%s</body>
+</html>
 `
 )
 
@@ -53,6 +78,8 @@ var (
 
 	gmailLabel = flag.String("l", labelName, "name of the Gmail label")
 	listLabels = flag.Bool("labels", false, "list all Gmail labels")
+	// TODO(bzz): a format flag \w validated md/html options would be better
+	ouputHTML = flag.Bool("html", false, "output report in HTML (instead of default Markdown)")
 )
 
 func usage() {
@@ -82,7 +109,11 @@ func main() {
 
 	errCount, titlesCount, uniqTitles := extractPapersFromMsgs(messages)
 
-	genMarkdownFromTemplate(len(messages), titlesCount, uniqTitles)
+	if *ouputHTML {
+		generateAndPrintHTML(mdTemplText, len(messages), titlesCount, uniqTitles)
+	} else {
+		generateAndPrintMarkdown(mdTemplText, len(messages), titlesCount, uniqTitles)
+	}
 
 	// TODO(bzz): add state
 	//  update report from FS \w checkbox state, instead of always generating a new one
@@ -93,27 +124,22 @@ func main() {
 	}
 }
 
-func genMarkdownFromTemplate(messagesCount, titlesCount int, papers map[paper]int) {
-	// TODO(bzz): add HTML template
-	tmplText := `
-Date: {{.Date}}
-Unread emails: {{.UnreadEmails}}
-Paper titles: {{.TotalPapers}}
-Uniq paper titles: {{.UniqPapers}}
-{{ range $paper := sortedKeys .Papers }}
- - [ ] [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
-   {{- if .Abstract.Full }}
-   <details>
-    <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
-   </details>
-   {{ end }}
-{{ end }}
-`
+func generateAndPrintHTML(tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
+	var mdBuf bytes.Buffer
+	generateReport(&mdBuf, mdTemplText, messagesCount, titlesCount, papers)
+	md := markdown.New(markdown.XHTMLOutput(true), markdown.HTML(true))
+	fmt.Printf(htmlTemplText, md.RenderToString([]byte(mdBuf.String())))
+}
 
+func generateAndPrintMarkdown(tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
+	generateReport(os.Stdout, tmplText, messagesCount, titlesCount, papers)
+}
+
+func generateReport(out io.Writer, tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
 	tmpl := template.Must(template.New("unread-papers").Funcs(template.FuncMap{
 		"sortedKeys": sortedKeys,
 	}).Parse(tmplText))
-	err := tmpl.Execute(os.Stdout, struct {
+	err := tmpl.Execute(out, struct {
 		Date         string
 		UnreadEmails int
 		TotalPapers  int
