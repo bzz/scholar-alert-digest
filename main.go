@@ -102,9 +102,11 @@ Paper titles: {{.TotalPapers}}
 Uniq paper titles: {{.UniqPapers}}
 {{ range $paper := sortedKeys .Papers }}
  - [ ] [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
+   {{- if .Abstract.Full }}
    <details>
     <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
    </details>
+   {{ end }}
 {{ end }}
 `
 
@@ -127,15 +129,6 @@ Uniq paper titles: {{.UniqPapers}}
 	if err != nil {
 		log.Fatalf("template %q execution failed: %s", tmplText, err)
 	}
-}
-
-func separateFirstLine(text string) []string {
-	text = strings.ReplaceAll(text, "\n", "")
-	n := 80 // TODO(bzz): whitespace-aware splitting alg capped by max N
-	if len(text) < n {
-		return []string{text, ""}
-	}
-	return []string{text[:n], text[n:]}
 }
 
 // fetchGmailMsgs fetches all unread messages under a certain lable from Gmail.
@@ -228,6 +221,15 @@ func extractPapersFromMsg(m *gmail.Message) ([]paper, error) {
 		})
 	}
 	return papers, nil
+}
+
+func separateFirstLine(text string) []string {
+	text = strings.ReplaceAll(text, "\n", "")
+	n := 80 // TODO(bzz): whitespace-aware splitting alg capped by max N
+	if len(text) < n {
+		return []string{text, ""}
+	}
+	return []string{text[:n], text[n:]}
 }
 
 // Helpers for a Map, sorted by keys.
