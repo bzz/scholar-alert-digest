@@ -26,6 +26,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
@@ -81,7 +82,7 @@ func main() {
 
 	errCount, titlesCount, uniqTitles := extractPapersFromMsgs(messages)
 
-	generateMarkdownReport(len(messages), titlesCount, uniqTitles)
+	genMarkdownFromTemplate(len(messages), titlesCount, uniqTitles)
 
 	// TODO(bzz): add state
 	//  update report from FS \w checkbox state, instead of always generating a new one
@@ -92,30 +93,49 @@ func main() {
 	}
 }
 
-func generateMarkdownReport(messagesCount, titlesCount int, uniqTitles map[paper]int) {
-	// TODO(bzz): convert to text/template
-	fmt.Printf("Date: %s\n", time.Now().Format(time.RFC3339))
-	fmt.Printf("Unread emails: %d\n", messagesCount)
-	fmt.Printf("Paper titles: %d\n", titlesCount)
-	fmt.Printf("Uniq paper titles: %d\n\n", len(uniqTitles))
+func genMarkdownFromTemplate(messagesCount, titlesCount int, papers map[paper]int) {
+	// TODO(bzz): add HTML template
+	tmplText := `
+Date: {{.Date}}
+Unread emails: {{.UnreadEmails}}
+Paper titles: {{.TotalPapers}}
+Uniq paper titles: {{.UniqPapers}}
+{{ range $paper := sortedKeys .Papers }}
+ - [ ] [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
+   <details>
+    <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
+   </details>
+{{ end }}
+`
 
-	// TODO(bzz): use a stable sort
-	for _, paper := range sortedKeys(uniqTitles) {
-		fmt.Printf(" - [ ] [%s](%s) (%d)\n", paper.title, paper.url, uniqTitles[paper])
-		firstLine, theRest := separateFirstLine(paper.abstract)
-		fmt.Printf(`   <details>
-		<summary>Abstract: %s ...</summary>`, firstLine)
-		fmt.Printf("%s\n   </details>\n", theRest)
+	tmpl := template.Must(template.New("unread-papers").Funcs(template.FuncMap{
+		"sortedKeys": sortedKeys,
+	}).Parse(tmplText))
+	err := tmpl.Execute(os.Stdout, struct {
+		Date         string
+		UnreadEmails int
+		TotalPapers  int
+		UniqPapers   int
+		Papers       map[paper]int
+	}{
+		time.Now().Format(time.RFC3339),
+		messagesCount,
+		titlesCount,
+		len(papers),
+		papers,
+	})
+	if err != nil {
+		log.Fatalf("template %q execution failed: %s", tmplText, err)
 	}
 }
 
-func separateFirstLine(text string) (string, string) {
+func separateFirstLine(text string) []string {
 	text = strings.ReplaceAll(text, "\n", "")
 	n := 80 // TODO(bzz): whitespace-aware splitting alg capped by max N
 	if len(text) < n {
-		return text, ""
+		return []string{text, ""}
 	}
-	return text[:n], text[n:]
+	return []string{text[:n], text[n:]}
 }
 
 // fetchGmailMsgs fetches all unread messages under a certain lable from Gmail.
@@ -201,7 +221,11 @@ func extractPapersFromMsg(m *gmail.Message) ([]paper, error) {
 			continue
 		}
 
-		papers = append(papers, paper{title, url, abs})
+		papers = append(papers, paper{
+			title, url, abstract{
+				abs, separateFirstLine(abs)[0], separateFirstLine(abs)[1],
+			},
+		})
 	}
 	return papers, nil
 }
@@ -217,6 +241,7 @@ func (sm *sortedMap) Len() int           { return len(sm.m) }
 func (sm *sortedMap) Less(i, j int) bool { return sm.m[sm.s[i]] > sm.m[sm.s[j]] }
 func (sm *sortedMap) Swap(i, j int)      { sm.s[i], sm.s[j] = sm.s[j], sm.s[i] }
 
+// TODO(bzz): use a stable sort
 func sortedKeys(m map[paper]int) []paper {
 	sm := new(sortedMap)
 	sm.m = m
@@ -231,5 +256,10 @@ func sortedKeys(m map[paper]int) []paper {
 }
 
 type paper struct {
-	title, url, abstract string
+	Title, URL string
+	Abstract   abstract
+}
+
+type abstract struct {
+	Full, FirstLine, RestLines string
 }
