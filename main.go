@@ -21,16 +21,19 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"os"
 	"sort"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 
 	"github.com/antchfx/htmlquery"
+	"gitlab.com/golang-commonmark/markdown"
 	"google.golang.org/api/gmail/v1"
 )
 
@@ -38,12 +41,35 @@ const (
 	labelName  = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
 	scholarURL = "http://scholar.google.com/scholar_url?url="
 
-	usageMessage = `usage: go run [-labels] [-l <your-gmail-label>]
+	usageMessage = `usage: go run [-labels] [-html] [-l <your-gmail-label>]
 
 Polls Gmail API for unread Google Scholar alert messaged under a given label,
 aggregates by paper title and prints a list of paper URLs in Markdown format.
 
 The -labels flag will only list all available labels for the current account.
+The -html flag will produce ouput report in HTML format.
+`
+
+	mdTemplText = `**Date**: {{.Date}}
+**Unread emails**: {{.UnreadEmails}}
+**Paper titles**: {{.TotalPapers}}
+**Uniq paper titles**: {{.UniqPapers}}
+
+{{ range $paper := sortedKeys .Papers }}
+ - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
+   {{- if .Abstract.Full }}
+   <details>
+    <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
+   </details>
+   {{ end }}
+{{ end }}
+`
+
+	htmlTemplText = `<!DOCTYPE html>
+<html lang="en">
+  <head><meta charset="UTF-8"></head>
+  <body>%s</body>
+</html>
 `
 )
 
@@ -52,6 +78,8 @@ var (
 
 	gmailLabel = flag.String("l", labelName, "name of the Gmail label")
 	listLabels = flag.Bool("labels", false, "list all Gmail labels")
+	// TODO(bzz): a format flag \w validated md/html options would be better
+	ouputHTML = flag.Bool("html", false, "output report in HTML (instead of default Markdown)")
 )
 
 func usage() {
@@ -81,7 +109,11 @@ func main() {
 
 	errCount, titlesCount, uniqTitles := extractPapersFromMsgs(messages)
 
-	generateMarkdownReport(len(messages), titlesCount, uniqTitles)
+	if *ouputHTML {
+		generateAndPrintHTML(mdTemplText, len(messages), titlesCount, uniqTitles)
+	} else {
+		generateAndPrintMarkdown(mdTemplText, len(messages), titlesCount, uniqTitles)
+	}
 
 	// TODO(bzz): add state
 	//  update report from FS \w checkbox state, instead of always generating a new one
@@ -92,30 +124,37 @@ func main() {
 	}
 }
 
-func generateMarkdownReport(messagesCount, titlesCount int, uniqTitles map[paper]int) {
-	// TODO(bzz): convert to text/template
-	fmt.Printf("Date: %s\n", time.Now().Format(time.RFC3339))
-	fmt.Printf("Unread emails: %d\n", messagesCount)
-	fmt.Printf("Paper titles: %d\n", titlesCount)
-	fmt.Printf("Uniq paper titles: %d\n\n", len(uniqTitles))
-
-	// TODO(bzz): use a stable sort
-	for _, paper := range sortedKeys(uniqTitles) {
-		fmt.Printf(" - [ ] [%s](%s) (%d)\n", paper.title, paper.url, uniqTitles[paper])
-		firstLine, theRest := separateFirstLine(paper.abstract)
-		fmt.Printf(`   <details>
-		<summary>Abstract: %s ...</summary>`, firstLine)
-		fmt.Printf("%s\n   </details>\n", theRest)
-	}
+func generateAndPrintHTML(tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
+	var mdBuf bytes.Buffer
+	generateReport(&mdBuf, mdTemplText, messagesCount, titlesCount, papers)
+	md := markdown.New(markdown.XHTMLOutput(true), markdown.HTML(true))
+	fmt.Printf(htmlTemplText, md.RenderToString([]byte(mdBuf.String())))
 }
 
-func separateFirstLine(text string) (string, string) {
-	text = strings.ReplaceAll(text, "\n", "")
-	n := 80 // TODO(bzz): whitespace-aware splitting alg capped by max N
-	if len(text) < n {
-		return text, ""
+func generateAndPrintMarkdown(tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
+	generateReport(os.Stdout, tmplText, messagesCount, titlesCount, papers)
+}
+
+func generateReport(out io.Writer, tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
+	tmpl := template.Must(template.New("unread-papers").Funcs(template.FuncMap{
+		"sortedKeys": sortedKeys,
+	}).Parse(tmplText))
+	err := tmpl.Execute(out, struct {
+		Date         string
+		UnreadEmails int
+		TotalPapers  int
+		UniqPapers   int
+		Papers       map[paper]int
+	}{
+		time.Now().Format(time.RFC3339),
+		messagesCount,
+		titlesCount,
+		len(papers),
+		papers,
+	})
+	if err != nil {
+		log.Fatalf("template %q execution failed: %s", tmplText, err)
 	}
-	return text[:n], text[n:]
 }
 
 // fetchGmailMsgs fetches all unread messages under a certain lable from Gmail.
@@ -201,9 +240,22 @@ func extractPapersFromMsg(m *gmail.Message) ([]paper, error) {
 			continue
 		}
 
-		papers = append(papers, paper{title, url, abs})
+		papers = append(papers, paper{
+			title, url, abstract{
+				abs, separateFirstLine(abs)[0], separateFirstLine(abs)[1],
+			},
+		})
 	}
 	return papers, nil
+}
+
+func separateFirstLine(text string) []string {
+	text = strings.ReplaceAll(text, "\n", "")
+	n := 80 // TODO(bzz): whitespace-aware splitting alg capped by max N
+	if len(text) < n {
+		return []string{text, ""}
+	}
+	return []string{text[:n], text[n:]}
 }
 
 // Helpers for a Map, sorted by keys.
@@ -217,6 +269,7 @@ func (sm *sortedMap) Len() int           { return len(sm.m) }
 func (sm *sortedMap) Less(i, j int) bool { return sm.m[sm.s[i]] > sm.m[sm.s[j]] }
 func (sm *sortedMap) Swap(i, j int)      { sm.s[i], sm.s[j] = sm.s[j], sm.s[i] }
 
+// TODO(bzz): use a stable sort
 func sortedKeys(m map[paper]int) []paper {
 	sm := new(sortedMap)
 	sm.m = m
@@ -231,5 +284,10 @@ func sortedKeys(m map[paper]int) []paper {
 }
 
 type paper struct {
-	title, url, abstract string
+	Title, URL string
+	Abstract   abstract
+}
+
+type abstract struct {
+	Full, FirstLine, RestLines string
 }
