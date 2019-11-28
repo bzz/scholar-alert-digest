@@ -80,6 +80,7 @@ var (
 	listLabels = flag.Bool("labels", false, "list all Gmail labels")
 	// TODO(bzz): a format flag \w validated md/html options would be better
 	ouputHTML = flag.Bool("html", false, "output report in HTML (instead of default Markdown)")
+	markRead  = flag.Bool("mark", false, "marks all aggregated emails as read")
 )
 
 func usage() {
@@ -115,9 +116,12 @@ func main() {
 		generateAndPrintMarkdown(mdTemplText, len(messages), titlesCount, uniqTitles)
 	}
 
-	// TODO(bzz): add state
-	//  update report from FS \w checkbox state, instead of always generating a new one
-	//  mark emails as "read", when all the links are checked off
+	if *markRead {
+		// TODO(bzz): add a state
+		//  use existing report from FS \w a checkbox state set by the user
+		//  only mark email as "read" iff all the links are checked off
+		markGmailMsgsUnread(srv, user, messages)
+	}
 
 	if errCount != 0 {
 		log.Printf("Errors: %d\n", errCount)
@@ -164,6 +168,25 @@ func fetchGmailMsgs(srv *gmail.Service, user, label string) []*gmail.Message {
 	}
 
 	return gmailutils.UnreadMessagesInLabel(srv, user, label)
+}
+
+func markGmailMsgsUnread(srv *gmail.Service, user string, messages []*gmail.Message) {
+	const label = "UNREAD"
+	var msgIds []string
+	for _, msg := range messages {
+		msgIds = append(msgIds, msg.Id)
+	}
+
+	err := srv.Users.Messages.BatchModify(user, &gmail.BatchModifyMessagesRequest{
+		Ids:            msgIds,
+		RemoveLabelIds: []string{label},
+	}).Do()
+	if err != nil {
+		log.Printf("failed to batch-delete label %s from %d messages: %s",
+			label, len(messages), err)
+	}
+	// TODO(bzz): move to
+	//  gmailutils.ModifyMessagesDelLabel(srv, user, messages, "UNREAD")
 }
 
 func extractPapersFromMsgs(messages []*gmail.Message) (int, int, map[paper]int) {
