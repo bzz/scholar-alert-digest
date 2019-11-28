@@ -74,7 +74,7 @@ func PrintAllLabels(srv *gmail.Service, user string) {
 
 	log.Printf("%d labels found", len(lablesResp.Labels))
 	for _, label := range lablesResp.Labels {
-		fmt.Printf("%s\n", label.Name)
+		fmt.Printf("%s\n", strings.ToLower(strings.ReplaceAll(label.Name, " ", "-")))
 	}
 }
 
