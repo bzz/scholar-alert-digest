@@ -50,7 +50,9 @@ The -labels flag will only list all available labels for the current account.
 The -html flag will produce ouput report in HTML format.
 `
 
-	mdTemplText = `**Date**: {{.Date}}
+	mdTemplText = `# Google Scholar Alert Digest
+
+**Date**: {{.Date}}
 **Unread emails**: {{.UnreadEmails}}
 **Paper titles**: {{.TotalPapers}}
 **Uniq paper titles**: {{.UniqPapers}}
@@ -104,10 +106,7 @@ func main() {
 	}
 
 	// TODO(bzz): fetchGmailMsgsAsync returning chan *gmail.Message
-	start := time.Now()
 	var messages []*gmail.Message = fetchGmailMsgs(srv, user, *gmailLabel)
-	log.Printf("%d unread messages found (took %.0f sec)", len(messages), time.Since(start).Seconds())
-
 	errCount, titlesCount, uniqTitles := extractPapersFromMsgs(messages)
 
 	if *ouputHTML {
@@ -163,11 +162,14 @@ func generateReport(out io.Writer, tmplText string, messagesCount, titlesCount i
 
 // fetchGmailMsgs fetches all unread messages under a certain lable from Gmail.
 func fetchGmailMsgs(srv *gmail.Service, user, label string) []*gmail.Message {
+	start := time.Now()
 	if envLabel, ok := os.LookupEnv("SAD_LABEL"); ok {
 		gmailLabel = &envLabel
 	}
 
-	return gmailutils.UnreadMessagesInLabel(srv, user, label)
+	msgs := gmailutils.UnreadMessagesInLabel(srv, user, label)
+	log.Printf("%d unread messages found (took %.0f sec)", len(msgs), time.Since(start).Seconds())
+	return msgs
 }
 
 func markGmailMsgsUnread(srv *gmail.Service, user string, messages []*gmail.Message) {
