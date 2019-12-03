@@ -55,6 +55,17 @@ In order to output rendered HTML instead of the default Markdown, use
 go run main.go -html
 ```
 
+To mark all emails that were aggregated in current report as read, use
+```
+go run main.go -mark
+```
+
+To include read emails in the separate section of the report, do
+```
+go run main.go -read
+```
+
+
 # License
 
 Apache License, Version 2.0. See [LICENSE](LICENSE)
