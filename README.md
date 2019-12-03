@@ -30,8 +30,8 @@ go run main.go -h
 
 # Configure
 
-Turn on Gmail API & download `credentials.json` following [these steps](https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the).
-_It will require authorizing a 'Quickstart' app to get read-only access to your Gmail account_
+Turn on Gmail API & download `credentials.json` following [these steps](https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the).</br>
+_That will create a new 'Quickstart' app in API console under your account and authorize it to get access to your Gmail_
 
 # Run
 
