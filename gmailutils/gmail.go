@@ -35,27 +35,40 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
+const instructions = `Please follow https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the
+in oreder to:
+ - create a new "Quickstart" API project under your account
+ - enable GMail API on it
+ - download OAuth 2.0 credentials
+`
+
 // NewClient a client configured with OAuth using 'credentials.json' and a 'token.json'.
-func NewClient() *http.Client {
+func NewClient(needWriteAccess bool) *http.Client {
 	b, err := ioutil.ReadFile("credentials.json")
 	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v\nPlease follow https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the", err)
+		log.Fatalf("Unable to read client secret file: %v\n%s", err, instructions)
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.
-	config, err := google.ConfigFromJSON(b, gmail.GmailReadonlyScope)
+	scopes := []string{gmail.GmailReadonlyScope}
+	token := "token.json"
+	if needWriteAccess {
+		scopes = append(scopes, gmail.GmailModifyScope)
+		token = "token_rw.json"
+	}
+
+	config, err := google.ConfigFromJSON(b, scopes...)
 	if err != nil {
 		log.Fatalf("Unable to parse client secret file to config: %v", err)
 	}
-	return getClient(config)
+	return getClient(config, token)
 }
 
 // Retrieve an OAuth token, saves it, then returns a pre-configured client.
-func getClient(config *oauth2.Config) *http.Client {
-	// The file token.json stores the user's access and refresh tokens, and is
+func getClient(config *oauth2.Config, tokFile string) *http.Client {
+	// The tokFile stores the user's access and refresh tokens, and is
 	// created automatically when the authorization flow completes for the first
 	// time.
-	tokFile := "token.json"
 	tok, err := token.FromFile(tokFile)
 	if err != nil {
 		tok = token.FromWeb(config)

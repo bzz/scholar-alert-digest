@@ -92,7 +92,7 @@ func main() {
 	flag.Usage = usage
 	flag.Parse()
 
-	client := gmailutils.NewClient()
+	client := gmailutils.NewClient(*markRead)
 	srv, err := gmail.New(client)
 	if err != nil {
 		log.Fatalf("Unable to create a Gmail client: %v", err)
