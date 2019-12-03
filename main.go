@@ -127,39 +127,6 @@ func main() {
 	}
 }
 
-func generateAndPrintHTML(tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
-	var mdBuf bytes.Buffer
-	generateReport(&mdBuf, mdTemplText, messagesCount, titlesCount, papers)
-	md := markdown.New(markdown.XHTMLOutput(true), markdown.HTML(true))
-	fmt.Printf(htmlTemplText, md.RenderToString([]byte(mdBuf.String())))
-}
-
-func generateAndPrintMarkdown(tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
-	generateReport(os.Stdout, tmplText, messagesCount, titlesCount, papers)
-}
-
-func generateReport(out io.Writer, tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
-	tmpl := template.Must(template.New("unread-papers").Funcs(template.FuncMap{
-		"sortedKeys": sortedKeys,
-	}).Parse(tmplText))
-	err := tmpl.Execute(out, struct {
-		Date         string
-		UnreadEmails int
-		TotalPapers  int
-		UniqPapers   int
-		Papers       map[paper]int
-	}{
-		time.Now().Format(time.RFC3339),
-		messagesCount,
-		titlesCount,
-		len(papers),
-		papers,
-	})
-	if err != nil {
-		log.Fatalf("template %q execution failed: %s", tmplText, err)
-	}
-}
-
 // fetchGmailMsgs fetches all unread messages under a certain lable from Gmail.
 func fetchGmailMsgs(srv *gmail.Service, user, label string) []*gmail.Message {
 	start := time.Now()
@@ -170,25 +137,6 @@ func fetchGmailMsgs(srv *gmail.Service, user, label string) []*gmail.Message {
 	msgs := gmailutils.UnreadMessagesInLabel(srv, user, label)
 	log.Printf("%d unread messages found (took %.0f sec)", len(msgs), time.Since(start).Seconds())
 	return msgs
-}
-
-func markGmailMsgsUnread(srv *gmail.Service, user string, messages []*gmail.Message) {
-	const label = "UNREAD"
-	var msgIds []string
-	for _, msg := range messages {
-		msgIds = append(msgIds, msg.Id)
-	}
-
-	err := srv.Users.Messages.BatchModify(user, &gmail.BatchModifyMessagesRequest{
-		Ids:            msgIds,
-		RemoveLabelIds: []string{label},
-	}).Do()
-	if err != nil {
-		log.Printf("failed to batch-delete label %s from %d messages: %s",
-			label, len(messages), err)
-	}
-	// TODO(bzz): move to
-	//  gmailutils.ModifyMessagesDelLabel(srv, user, messages, "UNREAD")
 }
 
 func extractPapersFromMsgs(messages []*gmail.Message) (int, int, map[paper]int) {
@@ -281,6 +229,58 @@ func separateFirstLine(text string) []string {
 		return []string{text, ""}
 	}
 	return []string{text[:n], text[n:]}
+}
+
+func generateAndPrintHTML(tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
+	var mdBuf bytes.Buffer
+	generateMdReport(&mdBuf, mdTemplText, messagesCount, titlesCount, papers)
+	md := markdown.New(markdown.XHTMLOutput(true), markdown.HTML(true))
+	fmt.Printf(htmlTemplText, md.RenderToString([]byte(mdBuf.String())))
+}
+
+func generateAndPrintMarkdown(tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
+	generateMdReport(os.Stdout, tmplText, messagesCount, titlesCount, papers)
+}
+
+func generateMdReport(out io.Writer, tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
+	tmpl := template.Must(template.New("unread-papers").Funcs(template.FuncMap{
+		"sortedKeys": sortedKeys,
+	}).Parse(tmplText))
+	err := tmpl.Execute(out, struct {
+		Date         string
+		UnreadEmails int
+		TotalPapers  int
+		UniqPapers   int
+		Papers       map[paper]int
+	}{
+		time.Now().Format(time.RFC3339),
+		messagesCount,
+		titlesCount,
+		len(papers),
+		papers,
+	})
+	if err != nil {
+		log.Fatalf("template %q execution failed: %s", tmplText, err)
+	}
+}
+
+func markGmailMsgsUnread(srv *gmail.Service, user string, messages []*gmail.Message) {
+	const label = "UNREAD"
+	var msgIds []string
+	for _, msg := range messages {
+		msgIds = append(msgIds, msg.Id)
+	}
+
+	err := srv.Users.Messages.BatchModify(user, &gmail.BatchModifyMessagesRequest{
+		Ids:            msgIds,
+		RemoveLabelIds: []string{label},
+	}).Do()
+	if err != nil {
+		log.Printf("failed to batch-delete label %s from %d messages: %s",
+			label, len(messages), err)
+	}
+	// TODO(bzz): move to
+	//  gmailutils.ModifyMessagesDelLabel(srv, user, messages, "UNREAD")
 }
 
 // Helpers for a Map, sorted by keys.
