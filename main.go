@@ -41,7 +41,7 @@ const (
 	labelName  = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
 	scholarURL = "http://scholar.google.com/scholar_url?url="
 
-	usageMessage = `usage: go run [-labels] [-html] [-mark] [-l <your-gmail-label>]
+	usageMessage = `usage: go run [-labels] [-html] [-mark] [-read] [-l <your-gmail-label>]
 
 Polls Gmail API for unread Google Scholar alert messaged under a given label,
 aggregates by paper title and prints a list of paper URLs in Markdown format.
@@ -49,7 +49,8 @@ aggregates by paper title and prints a list of paper URLs in Markdown format.
 The -l flag sets the Gmail label to look for (overriden by 'SAD_LABEL' env variable).
 The -labels flag will only list all available labels for the current account.
 The -html flag will produce ouput report in HTML format.
-The -mark flag will mark all the aggregated emails as read in Gmail"
+The -mark flag will mark all the aggregated emails as read in Gmail.
+The -read flag will include a new section in the report, aggregating all read emails.
 `
 
 	newMdTemplText = `# Google Scholar Alert Digest
