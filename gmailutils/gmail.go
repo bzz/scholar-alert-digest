@@ -91,14 +91,8 @@ func PrintAllLabels(srv *gmail.Service, user string) {
 	}
 }
 
-// UnreadMessagesInLabel returns unread messages under a given lable.
-func UnreadMessagesInLabel(srv *gmail.Service, user, labelName string) []*gmail.Message {
-	log.Printf("Searching for all unread messages under Gmail label %q", labelName)
-	return queryMessages(srv, user, fmt.Sprintf("label:%s is:unread", labelName))
-}
-
-// queryMessages returns all messages matching a query for a given user.
-func queryMessages(srv *gmail.Service, user, query string) []*gmail.Message {
+// QueryMessages returns the all messages, matching a query for a given user.
+func QueryMessages(srv *gmail.Service, user, query string) []*gmail.Message {
 	var messages []*gmail.Message
 	page := 0 // iterate pages
 	err := srv.Users.Messages.List(user).Q(query).Pages(context.TODO(), func(rm *gmail.ListMessagesResponse) error {

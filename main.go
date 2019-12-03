@@ -46,26 +46,44 @@ const (
 Polls Gmail API for unread Google Scholar alert messaged under a given label,
 aggregates by paper title and prints a list of paper URLs in Markdown format.
 
+The -l flag sets the Gmail label to look for (overriden by 'SAD_LABEL' env variable).
 The -labels flag will only list all available labels for the current account.
 The -html flag will produce ouput report in HTML format.
 The -mark flag will mark all the aggregated emails as read in Gmail"
 `
 
-	mdTemplText = `# Google Scholar Alert Digest
+	newMdTemplText = `# Google Scholar Alert Digest
 
 **Date**: {{.Date}}
 **Unread emails**: {{.UnreadEmails}}
 **Paper titles**: {{.TotalPapers}}
 **Uniq paper titles**: {{.UniqPapers}}
 
+## New papers
 {{ range $paper := sortedKeys .Papers }}
  - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
    {{- if .Abstract.Full }}
    <details>
-    <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
+     <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
    </details>
    {{ end }}
 {{ end }}
+`
+
+	oldMdTemplText = `## Old papers
+
+<details>
+  <summary>Archive</summary>
+
+{{ range $paper := sortedKeys . }}
+  - [{{ .Title }}]({{ .URL }})
+    {{- if .Abstract.Full }}
+    <details>
+      <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
+    </details>
+    {{ end }}
+{{ end }}
+</details>
 `
 
 	htmlTemplText = `<!DOCTYPE html>
@@ -84,6 +102,7 @@ var (
 	// TODO(bzz): a format flag \w validated md/html options would be better
 	ouputHTML = flag.Bool("html", false, "output report in HTML (instead of default Markdown)")
 	markRead  = flag.Bool("mark", false, "marks all aggregated emails as read")
+	read      = flag.Bool("read", false, "include read emails to a separate section of the report")
 )
 
 func usage() {
@@ -106,37 +125,44 @@ func main() {
 		os.Exit(0)
 	}
 
-	// TODO(bzz): fetchGmailMsgsAsync returning chan *gmail.Message
-	var messages []*gmail.Message = fetchGmailMsgs(srv, user, *gmailLabel)
-	errCount, titlesCount, uniqTitles := extractPapersFromMsgs(messages)
+	// override lable name by env var
+	if envLabel, ok := os.LookupEnv("SAD_LABEL"); ok {
+		gmailLabel = &envLabel
+	}
+
+	// TODO(bzz): fetchGmailAsync returning chan *gmail.Message
+	var urMsgs []*gmail.Message = fetchGmail(srv, user, fmt.Sprintf("label:%s is:unread", *gmailLabel))
+	errCnt, urTitlesCnt, urTitles := extractPapersFromMsgs(urMsgs)
+
+	var rTitles map[paper]int
+	if *read {
+		rMsgs := fetchGmail(srv, user, fmt.Sprintf("label:%s is:read", *gmailLabel))
+		_, _, rTitles = extractPapersFromMsgs(rMsgs)
+	}
 
 	if *ouputHTML {
-		generateAndPrintHTML(mdTemplText, len(messages), titlesCount, uniqTitles)
+		generateAndPrintHTML(len(urMsgs), urTitlesCnt, urTitles, rTitles)
 	} else {
-		generateAndPrintMarkdown(mdTemplText, len(messages), titlesCount, uniqTitles)
+		generateAndPrintMarkdown(len(urMsgs), urTitlesCnt, urTitles, rTitles)
 	}
 
 	if *markRead {
 		// TODO(bzz): add a state
 		//  use existing report from FS \w a checkbox state set by the user
 		//  only mark email as "read" iff all the links are checked off
-		markGmailMsgsUnread(srv, user, messages)
+		markGmailMsgsUnread(srv, user, urMsgs)
 	}
 
-	if errCount != 0 {
-		log.Printf("Errors: %d\n", errCount)
+	if errCnt != 0 {
+		log.Printf("Errors: %d\n", errCnt)
 	}
 }
 
-// fetchGmailMsgs fetches all unread messages under a certain lable from Gmail.
-func fetchGmailMsgs(srv *gmail.Service, user, label string) []*gmail.Message {
+// fetchGmail fetches all messages matching a given query from the Gmail.
+func fetchGmail(srv *gmail.Service, user, query string) []*gmail.Message {
 	start := time.Now()
-	if envLabel, ok := os.LookupEnv("SAD_LABEL"); ok {
-		gmailLabel = &envLabel
-	}
-
-	msgs := gmailutils.UnreadMessagesInLabel(srv, user, label)
-	log.Printf("%d unread messages found (took %.0f sec)", len(msgs), time.Since(start).Seconds())
+	msgs := gmailutils.QueryMessages(srv, user, query)
+	log.Printf("%d messages found under %q (took %.0f sec)", len(msgs), query, time.Since(start).Seconds())
 	return msgs
 }
 
@@ -232,18 +258,28 @@ func separateFirstLine(text string) []string {
 	return []string{text[:n], text[n:]}
 }
 
-func generateAndPrintHTML(tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
+func generateAndPrintHTML(msgsCnt, titlesCnt int, unread, read map[paper]int) {
 	var mdBuf bytes.Buffer
-	generateMdReport(&mdBuf, mdTemplText, messagesCount, titlesCount, papers)
+	generateMarkdown(&mdBuf, msgsCnt, titlesCnt, unread, read)
+
 	md := markdown.New(markdown.XHTMLOutput(true), markdown.HTML(true))
 	fmt.Printf(htmlTemplText, md.RenderToString([]byte(mdBuf.String())))
 }
 
-func generateAndPrintMarkdown(tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
-	generateMdReport(os.Stdout, tmplText, messagesCount, titlesCount, papers)
+func generateAndPrintMarkdown(msgsCnt, titlesCnt int, unread, read map[paper]int) {
+	generateMarkdown(os.Stdout, msgsCnt, titlesCnt, unread, read)
 }
 
-func generateMdReport(out io.Writer, tmplText string, messagesCount, titlesCount int, papers map[paper]int) {
+func generateMarkdown(out io.Writer, msgsCnt, titlesCnt int, unread, read map[paper]int) {
+	newMdReport(out, msgsCnt, titlesCnt, unread)
+	if read != nil {
+		oldMdReport(out, read)
+	}
+}
+
+// renderes newMdTemplText for new, unread papers.
+func newMdReport(out io.Writer, msgsCnt, titlesCnt int, papers map[paper]int) {
+	tmplText := newMdTemplText
 	tmpl := template.Must(template.New("unread-papers").Funcs(template.FuncMap{
 		"sortedKeys": sortedKeys,
 	}).Parse(tmplText))
@@ -255,11 +291,23 @@ func generateMdReport(out io.Writer, tmplText string, messagesCount, titlesCount
 		Papers       map[paper]int
 	}{
 		time.Now().Format(time.RFC3339),
-		messagesCount,
-		titlesCount,
+		msgsCnt,
+		titlesCnt,
 		len(papers),
 		papers,
 	})
+	if err != nil {
+		log.Fatalf("template %q execution failed: %s", tmplText, err)
+	}
+}
+
+// renderes oldMdTemplText for old, read papers
+func oldMdReport(out io.Writer, papers map[paper]int) {
+	tmplText := oldMdTemplText
+	tmpl := template.Must(template.New("read-papers").Funcs(template.FuncMap{
+		"sortedKeys": sortedKeys,
+	}).Parse(tmplText))
+	err := tmpl.Execute(out, papers)
 	if err != nil {
 		log.Fatalf("template %q execution failed: %s", tmplText, err)
 	}
