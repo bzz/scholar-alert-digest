@@ -27,6 +27,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils/token"
 
@@ -36,7 +37,8 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
-const instructions = `Please follow https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the
+// Instructions are user manual for OAuth app configuration from Gmail.
+const Instructions = `Please follow https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the
 in oreder to:
  - create a new "Quickstart" API project under your account
  - enable GMail API on it
@@ -47,7 +49,7 @@ in oreder to:
 func NewClient(needWriteAccess bool) *http.Client {
 	b, err := ioutil.ReadFile("credentials.json")
 	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v\n%s", err, instructions)
+		log.Fatalf("Unable to read client secret file: %v\n%s", err, Instructions)
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.
@@ -78,6 +80,27 @@ func getClient(config *oauth2.Config, tokFile string) *http.Client {
 	return config.Client(context.Background(), tok)
 }
 
+// FetchLabels fetches the list of labels, as returned by Gmail.
+func FetchLabels(ctx context.Context, oauthCfg *oauth2.Config, token *oauth2.Token) (
+	*gmail.ListLabelsResponse, error) { // TODO(bzz): extract all args to a struct and make it a method
+	// get an authorized Gmail API client
+	client := oauthCfg.Client(ctx, token)
+	srv, err := gmail.New(client)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO(bzz): handle token expiration (by cookie expiration? or set refresh token?)
+	// Unable to retrieve all labels: Get https://www.googleapis.com/gmail/v1/users/me/labels?alt=json&prettyPrint=false: oauth2: token expired and refresh token is not set
+
+	// fetch from Gmail
+	lablesResp, err := srv.Users.Labels.List("me").Do()
+	if err != nil {
+		return nil, err
+	}
+	return lablesResp, nil
+}
+
 // PrintAllLabels prints all labels for a given user.
 func PrintAllLabels(srv *gmail.Service, user string) {
 	log.Printf("Listing all Gmail labels")
@@ -90,6 +113,14 @@ func PrintAllLabels(srv *gmail.Service, user string) {
 	for _, label := range lablesResp.Labels {
 		fmt.Printf("%s\n", strings.ToLower(strings.ReplaceAll(label.Name, " ", "-")))
 	}
+}
+
+// Fetch fetches all messages matching a given query from the Gmail.
+func Fetch(srv *gmail.Service, user, query string) []*gmail.Message {
+	start := time.Now()
+	msgs := QueryMessages(srv, user, query)
+	log.Printf("%d messages found under %q (took %.0f sec)", len(msgs), query, time.Since(start).Seconds())
+	return msgs
 }
 
 // QueryMessages returns the all messages, matching a query for a given user.

@@ -142,18 +142,18 @@ func main() {
 	}
 
 	if *onlySubj {
-		msgs := fetchGmail(srv, user, fmt.Sprintf("label:%s", *gmailLabel))
+		msgs := gmailutils.Fetch(srv, user, fmt.Sprintf("label:%s", *gmailLabel))
 		printSubjects(msgs)
 		os.Exit(0)
 	}
 
-	// TODO(bzz): fetchGmailAsync returning chan *gmail.Message
-	var urMsgs []*gmail.Message = fetchGmail(srv, user, fmt.Sprintf("label:%s is:unread", *gmailLabel))
+	// TODO(bzz): FetchAsync returning chan *gmail.Message
+	var urMsgs []*gmail.Message = gmailutils.Fetch(srv, user, fmt.Sprintf("label:%s is:unread", *gmailLabel))
 	errCnt, urTitlesCnt, urTitles := extractPapersFromMsgs(urMsgs)
 
 	var rTitles map[paper]int
 	if *read {
-		rMsgs := fetchGmail(srv, user, fmt.Sprintf("label:%s is:read", *gmailLabel))
+		rMsgs := gmailutils.Fetch(srv, user, fmt.Sprintf("label:%s is:read", *gmailLabel))
 		_, _, rTitles = extractPapersFromMsgs(rMsgs)
 	}
 
@@ -208,15 +208,6 @@ func splitOnDash(str string) ([]string, string) {
 	}
 	sep := fmt.Sprintf(" %s ", dash)
 	return strings.Split(str, sep), sep
-}
-
-// fetchGmail fetches all messages matching a given query from the Gmail.
-func fetchGmail(srv *gmail.Service, user, query string) []*gmail.Message {
-	log.Printf("searching Gmail messages, query: %q", query)
-	start := time.Now()
-	msgs := gmailutils.QueryMessages(srv, user, query)
-	log.Printf("got %d messages total (took %.0f sec)", len(msgs), time.Since(start).Seconds())
-	return msgs
 }
 
 func extractPapersFromMsgs(messages []*gmail.Message) (int, int, map[paper]int) {
