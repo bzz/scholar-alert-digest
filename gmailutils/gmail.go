@@ -94,23 +94,23 @@ func FetchLabels(ctx context.Context, oauthCfg *oauth2.Config, token *oauth2.Tok
 	// Unable to retrieve all labels: Get https://www.googleapis.com/gmail/v1/users/me/labels?alt=json&prettyPrint=false: oauth2: token expired and refresh token is not set
 
 	// fetch from Gmail
-	lablesResp, err := srv.Users.Labels.List("me").Do()
+	labelsResp, err := srv.Users.Labels.List("me").Do()
 	if err != nil {
 		return nil, err
 	}
-	return lablesResp, nil
+	return labelsResp, nil
 }
 
 // PrintAllLabels prints all labels for a given user.
 func PrintAllLabels(srv *gmail.Service, user string) {
 	log.Printf("Listing all Gmail labels")
-	lablesResp, err := srv.Users.Labels.List(user).Do()
+	labelsResp, err := srv.Users.Labels.List(user).Do()
 	if err != nil {
 		log.Fatalf("Unable to retrieve all labels: %v", err)
 	}
 
-	log.Printf("%d labels found", len(lablesResp.Labels))
-	for _, label := range lablesResp.Labels {
+	log.Printf("%d labels found", len(labelsResp.Labels))
+	for _, label := range labelsResp.Labels {
 		fmt.Printf("%s\n", strings.ToLower(strings.ReplaceAll(label.Name, " ", "-")))
 	}
 }
