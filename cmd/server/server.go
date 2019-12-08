@@ -24,7 +24,7 @@ var ( // templates
 <head>
   <meta charset="UTF-8">
   <title>{{ template "title" }}</title>
-  <!-- TODO(bzz) favicon.ico -->
+  <link rel="icon" href="http://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/apple/232/page-with-curl_1f4c3.png">
 </head>
 <body>{{ template "body" . }}</body>
 </html>
