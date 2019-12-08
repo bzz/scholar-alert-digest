@@ -15,6 +15,11 @@
  */
 
 // CLI tool for aggregating unread messages in Gmail from Google Scholar Alert.
+//
+// It does so by:
+//  - fetching messages under a certian Gmail label
+//  - transforming and aggregateing them into map[paper]int
+//  - rendering a text/template with it, in Markdown or HTML
 package main
 
 import (
@@ -25,6 +30,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
@@ -38,8 +44,7 @@ import (
 )
 
 const (
-	labelName  = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
-	scholarURL = "http://scholar.google.com/scholar_url?url="
+	labelName = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
 
 	usageMessage = `usage: go run [-labels] [-html] [-mark] [-read] [-l <your-gmail-label>]
 
@@ -96,7 +101,8 @@ The -read flag will include a new section in the report, aggregating all read em
 )
 
 var (
-	user = "me"
+	user             = "me"
+	scholarURLPrefix = regexp.MustCompile(`http(s)?://scholar\.google\.\p{L}+/scholar_url\?url=`)
 
 	gmailLabel = flag.String("l", labelName, "name of the Gmail label")
 	listLabels = flag.Bool("labels", false, "list all Gmail labels")
@@ -234,8 +240,7 @@ func extractPapersFromMsg(m *gmail.Message) ([]paper, error) {
 		title := strings.TrimSpace(htmlquery.InnerText(aTitle))
 		abs := strings.TrimSpace(htmlquery.InnerText(abss[i]))
 
-		longURL := strings.TrimPrefix(htmlquery.InnerText(urls[i]), scholarURL)
-		url, err := url.QueryUnescape(longURL[:strings.Index(longURL, "&")])
+		url, err := extractPaperURL(htmlquery.InnerText(urls[i]))
 		if err != nil {
 			log.Printf("Skipping paper %q in %q: %s", title, subj, err)
 			continue
@@ -250,9 +255,27 @@ func extractPapersFromMsg(m *gmail.Message) ([]paper, error) {
 	return papers, nil
 }
 
+// extractPaperURL returns an actual paper URL from the given scholar link.
+// Does not validate URL format but extracts it ad-hoc by trimming sufix/prefix.
+func extractPaperURL(scholarURL string) (string, error) {
+	// drop scholarURLPrefix
+	prefixLoc := scholarURLPrefix.FindStringIndex(scholarURL)
+	if prefixLoc == nil {
+		return "", fmt.Errorf("url %q does not have prefix %q", scholarURL, scholarURLPrefix.String())
+	}
+	longURL := scholarURL[prefixLoc[1]:]
+
+	// drop sufix (after &), if any
+	if sufix := strings.Index(longURL, "&"); sufix >= 0 {
+		longURL = longURL[:sufix]
+	}
+
+	return url.QueryUnescape(longURL)
+}
+
 func separateFirstLine(text string) []string {
 	text = strings.ReplaceAll(text, "\n", "")
-	n := 80 // TODO(bzz): whitespace-aware splitting alg capped by max N
+	n := 80 // TODO(bzz): utf8 whitespace-aware splitting alg capped by max N runes
 	if len(text) < n {
 		return []string{text, ""}
 	}
@@ -358,6 +381,10 @@ func sortedKeys(m map[paper]int) []paper {
 	return sm.s
 }
 
+// paper is a map key, thus aggregation take into account all it's fields.
+//
+// TODO(bzz): think about aggregation only by the title, as suggested in
+// https://github.com/bzz/scholar-alert-digest/issues/12#issuecomment-562820924
 type paper struct {
 	Title, URL string
 	Abstract   abstract
