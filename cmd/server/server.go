@@ -1,9 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
+	"sort"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 	"github.com/bzz/scholar-alert-digest/gmailutils/token"
@@ -13,7 +18,37 @@ import (
 	"google.golang.org/api/gmail/v1"
 )
 
-var (
+var ( // templates
+	layout = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ template "title" }}</title>
+  <!-- TODO(bzz) favicon.ico -->
+</head>
+<body>{{ template "body" . }}</body>
+</html>
+`
+	chooseLabelsForm = `
+{{ define "title"}}Chose a label{{ end }}
+{{ define "body" }}
+<p>Please, chosse a Gmail label to aggregate:</p>
+<form action="/labels" method="POST">
+{{ range . }}
+    <div>
+      <input type="radio" id="{{.}}" name="label" value="{{.}}">
+      <label for="{{.}}">{{.}}</label>
+	</div>
+{{ end }}
+
+  <input type="submit" value="Select Label"/>
+</form>
+{{ end }}
+`
+)
+
+var ( // configuration
 	addr     = "localhost:8080"
 	oauthCfg = &oauth2.Config{
 		// from https://console.developers.google.com/project/<your-project-id>/apiui/credential
@@ -33,8 +68,10 @@ func main() {
 	log.Printf("starting the web server at http://%s", addr)
 	defer log.Printf("stoping the web server")
 
+	// TODO(bzz): migrate to chi-router
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleRoot)
+	mux.HandleFunc("/labels", handleLabels)
 	mux.HandleFunc("/login", handleLogin)
 	mux.HandleFunc("/login/authorized", handleAuth)
 
@@ -45,28 +82,85 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	// get token, stored in context by middleware (from cookies)
 	tok, authorized := token.FromContext(r.Context())
 	if !authorized { // TODO(bzz): move this to middleware
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("Not logged in: go to /login\n"))
+		// w.WriteHeader(http.StatusNotFound)
+		// w.Write([]byte("Not logged in: go to /login\n"))
+		http.Redirect(w, r, "/login", http.StatusFound)
 	}
 
-	// TOOD(bzz): if the label is known, fetch messages instead
-	// gmailutils.Fetch(srv, "me", fmt.Sprintf("label:%s is:unread", gmailLabel))
-	labels, err := gmailutils.FetchLabels(r.Context(), oauthCfg, tok)
+	gmailLabel, hasLabel := token.LabelFromContext(r.Context())
+	if !hasLabel {
+		http.Redirect(w, r, "/labels", http.StatusFound)
+	}
+
+	// fetch messages
+	srv, _ := gmail.New(oauthCfg.Client(r.Context(), tok)) // ignore as client != nil
+	msgs, err := gmailutils.Fetch(srv, "me", fmt.Sprintf("label:%s is:unread", gmailLabel))
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
+	// print
+	var buf bytes.Buffer
+	json.NewEncoder(&buf).Encode(msgs) // FIXME(bzz): handle JSON encoding failures
+	w.Write(buf.Bytes())
+}
+
+func handleLabels(w http.ResponseWriter, r *http.Request) {
+	tok, authorized := token.FromContext(r.Context())
+	if !authorized { // TODO(bzz): move this to middleware
+		http.Redirect(w, r, "/login", http.StatusFound)
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		fetchLabelsAndServeForm(w, r, tok)
+	case http.MethodPost:
+		saveLabelToCookies(w, r)
+		http.Redirect(w, r, "/", http.StatusFound)
+	}
+}
+
+func saveLabelToCookies(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil { // url query part is not valid
+		log.Printf("Unable to parse query string: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	label := r.FormValue("label")
+
+	cookie := token.NewLabelCookie(label)
+	log.Printf("Saving new cookie: %s", cookie.String())
+	http.SetCookie(w, cookie)
+}
+
+func fetchLabelsAndServeForm(w http.ResponseWriter, r *http.Request, tok *oauth2.Token) {
+	labelsResp, err := gmailutils.FetchLabels(r.Context(), oauthCfg, tok)
 	if err != nil {
 		log.Printf("Unable to retrieve all labels: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	// TODO: render a template \w POST form to label selection
-	data, err := labels.MarshalJSON()
-	if err != nil {
-		log.Printf("Failed to encode labels in JSON: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+	var labels []string // user labels, sorted
+	for _, l := range labelsResp.Labels {
+		if l.Type == "system" {
+			continue
+		}
+		labels = append(labels, l.Name)
 	}
+	sort.Strings(labels)
 
-	w.Write(data)
+	tmpl := template.Must( // render combination of the nested templates
+		template.Must(
+			template.New("choose-label").Parse(layout)).
+			Parse(chooseLabelsForm))
+	err = tmpl.Execute(w, labels)
+	if err != nil {
+		log.Printf("Failed to render a template: %v", err)
+	}
 }
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -97,6 +191,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	cookie := token.NewSessionCookie(tok)
 	log.Printf("Saving new cookie: %s", cookie.String())
 	http.SetCookie(w, cookie)
+
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 

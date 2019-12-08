@@ -116,15 +116,19 @@ func PrintAllLabels(srv *gmail.Service, user string) {
 }
 
 // Fetch fetches all messages matching a given query from the Gmail.
-func Fetch(srv *gmail.Service, user, query string) []*gmail.Message {
+func Fetch(srv *gmail.Service, user, query string) ([]*gmail.Message, error) {
 	start := time.Now()
-	msgs := QueryMessages(srv, user, query)
+	msgs, err := QueryMessages(srv, user, query)
+	if err != nil {
+		// TODO(bzz): add several reties
+		return nil, err
+	}
 	log.Printf("%d messages found under %q (took %.0f sec)", len(msgs), query, time.Since(start).Seconds())
-	return msgs
+	return msgs, nil
 }
 
 // QueryMessages returns the all messages, matching a query for a given user.
-func QueryMessages(srv *gmail.Service, user, query string) []*gmail.Message {
+func QueryMessages(srv *gmail.Service, user, query string) ([]*gmail.Message, error) {
 	var messages []*gmail.Message
 	page := 0 // iterate pages
 	err := srv.Users.Messages.List(user).Q(query).Pages(context.TODO(), func(mr *gmail.ListMessagesResponse) error {
@@ -148,10 +152,11 @@ func QueryMessages(srv *gmail.Service, user, query string) []*gmail.Message {
 		return nil
 	})
 	if err != nil {
-		log.Fatalf("Unable to retrieve messages with the query %q, page %d: %v", query, page, err)
+		log.Printf("Unable to retrieve messages, query:%q, page:%d - %v", query, page, err)
+		return nil, err
 	}
 
-	return messages
+	return messages, nil
 }
 
 // Subject returns the Subject header of a message

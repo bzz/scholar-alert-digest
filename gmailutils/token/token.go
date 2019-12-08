@@ -62,10 +62,14 @@ func FromFile(file string) (*oauth2.Token, error) {
 	return tok, err
 }
 
+// TODO(bzz): move to session.go, cookies/context are together due to sharing the Key
 // contextKey is unexported type to prevent collisions with context keys.
 type contextKey string
 
-const sessionKey contextKey = "session"
+const (
+	sessionKey contextKey = "session"
+	labelKey   contextKey = "label"
+)
 
 // FromContext returnes the token, saved from the cookies, if any.
 func FromContext(ctx context.Context) (*oauth2.Token, bool) {
@@ -84,25 +88,56 @@ func FromContext(ctx context.Context) (*oauth2.Token, bool) {
 	return &tok, true
 }
 
+// LabelFromContext returnes the label, saved from the cookies, if any.
+func LabelFromContext(ctx context.Context) (string, bool) {
+	l := ctx.Value(labelKey)
+	if l == nil {
+		return "", false
+	}
+
+	return l.(string), true
+}
+
 // NewSessionCookie returns a new cookie with the token set.
 func NewSessionCookie(token *oauth2.Token) *http.Cookie {
 	var buf bytes.Buffer
-	json.NewEncoder(&buf).Encode(token)
+	json.NewEncoder(&buf).Encode(token) // FIXME(bzz): handle JSON encoding failures
 	sessionVal := base64.StdEncoding.EncodeToString(buf.Bytes())
 
 	return &http.Cookie{
-		Name:  string(sessionKey),
-		Value: sessionVal,
-		Path:  "/",
-		//HttpOnly: true,
+		Name:     string(sessionKey),
+		Value:    sessionVal,
+		Path:     "/",
+		HttpOnly: true,
 	}
 }
 
-// NewSessionContext returnes a context with token set from the session cookie, if any.
+// NewLabelCookie returns a new cookie with the token set.
+func NewLabelCookie(label string) *http.Cookie {
+	// TODO(bzz): test with labels in on Gmail in Chinese/emoji
+	labelVal := base64.StdEncoding.EncodeToString([]byte(label))
+
+	return &http.Cookie{
+		Name:  string(labelKey),
+		Value: labelVal,
+		Path:  "/",
+	}
+}
+
+// NewSessionContext reads session cookie, returnes context with the token set to it, if any.
 func NewSessionContext(parent context.Context, cookies []*http.Cookie) context.Context {
+	return newContextWith(parent, cookies, sessionKey)
+}
+
+// NewLabelContext reads label cookie, returnes context with the label set to it, if any.
+func NewLabelContext(parent context.Context, cookies []*http.Cookie) context.Context {
+	return newContextWith(parent, cookies, labelKey)
+}
+
+func newContextWith(parent context.Context, cookies []*http.Cookie, key contextKey) context.Context {
 	var sessionCookie *http.Cookie
 	for _, c := range cookies {
-		if c.Name == string(sessionKey) {
+		if c.Name == string(key) {
 			sessionCookie = c
 			break
 		}
@@ -114,10 +149,10 @@ func NewSessionContext(parent context.Context, cookies []*http.Cookie) context.C
 
 	sessionVal, err := base64.StdEncoding.DecodeString(sessionCookie.Value)
 	if err != nil {
-		log.Printf("Unable to decode base64 session cookie val: %v", err)
+		log.Printf("Unable to decode base64 %s cookie: %v", string(key), err)
 		return parent
 	}
-	return context.WithValue(parent, sessionKey, string(sessionVal))
+	return context.WithValue(parent, key, string(sessionVal))
 }
 
 // Save saves the token to a file path.
