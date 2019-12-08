@@ -25,6 +25,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"text/template"
@@ -38,8 +39,7 @@ import (
 )
 
 const (
-	labelName        = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
-	scholarPrefixURL = "http://scholar.google.com/scholar_url?url="
+	labelName = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
 
 	usageMessage = `usage: go run [-labels] [-html] [-mark] [-read] [-l <your-gmail-label>]
 
@@ -96,7 +96,8 @@ The -read flag will include a new section in the report, aggregating all read em
 )
 
 var (
-	user = "me"
+	user             = "me"
+	scholarURLPrefix = regexp.MustCompile(`http(s)?://scholar\.google\.\p{L}+/scholar_url\?url=`)
 
 	gmailLabel = flag.String("l", labelName, "name of the Gmail label")
 	listLabels = flag.Bool("labels", false, "list all Gmail labels")
@@ -249,9 +250,22 @@ func extractPapersFromMsg(m *gmail.Message) ([]paper, error) {
 	return papers, nil
 }
 
+// extractPaperURL returns an actual paper URL from the given scholar link.
+// Does not validate URL format but extracts it ad-hoc by trimming sufix/prefix.
 func extractPaperURL(scholarURL string) (string, error) {
-	longURL := strings.TrimPrefix(scholarURL, scholarPrefixURL)
-	url, err := url.QueryUnescape(longURL[:strings.Index(longURL, "&")])
+	// drop scholarURLPrefix
+	prefixLoc := scholarURLPrefix.FindStringIndex(scholarURL)
+	if prefixLoc == nil {
+		return "", fmt.Errorf("url %q does not have prefix %q", scholarURL, scholarURLPrefix.String())
+	}
+	longURL := scholarURL[prefixLoc[1]:]
+
+	// drop sufix (after &), if any
+	if sufix := strings.Index(longURL, "&"); sufix >= 0 {
+		longURL = longURL[:sufix]
+	}
+
+	url, err := url.QueryUnescape(longURL)
 	if err != nil {
 		return "", err
 	}
