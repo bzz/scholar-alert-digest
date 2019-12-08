@@ -24,6 +24,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -148,12 +149,18 @@ func main() {
 	}
 
 	// TODO(bzz): FetchAsync returning chan *gmail.Message
-	var urMsgs []*gmail.Message = gmailutils.Fetch(srv, user, fmt.Sprintf("label:%s is:unread", *gmailLabel))
+	urMsgs, err := gmailutils.Fetch(context.TODO(), srv, user, fmt.Sprintf("label:%s is:unread", *gmailLabel))
+	if err != nil {
+		log.Fatal("Failed to fetch messages from Gmail")
+	}
 	errCnt, urTitlesCnt, urTitles := extractPapersFromMsgs(urMsgs)
 
 	var rTitles map[paper]int
 	if *read {
-		rMsgs := gmailutils.Fetch(srv, user, fmt.Sprintf("label:%s is:read", *gmailLabel))
+		rMsgs, err := gmailutils.Fetch(context.TODO(), srv, user, fmt.Sprintf("label:%s is:read", *gmailLabel))
+		if err != nil {
+			log.Fatal("Failed to fetch messages from Gmail")
+		}
 		_, _, rTitles = extractPapersFromMsgs(rMsgs)
 	}
 

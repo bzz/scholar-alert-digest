@@ -110,34 +110,39 @@ func PrintAllLabels(srv *gmail.Service, user string) {
 	}
 
 	log.Printf("%d labels found", len(labelsResp.Labels))
-	for _, label := range labelsResp.Labels {
-		fmt.Printf("%s\n", strings.ToLower(strings.ReplaceAll(label.Name, " ", "-")))
+	for _, l := range labelsResp.Labels {
+		fmt.Println(FormatAsID(l.Name))
 	}
 }
 
 // Fetch fetches all messages matching a given query from the Gmail.
-func Fetch(srv *gmail.Service, user, query string) ([]*gmail.Message, error) {
+func Fetch(ctx context.Context, srv *gmail.Service, user, query string) ([]*gmail.Message, error) {
+	log.Printf("Search and fetch messages from Gmail: %q", query)
 	start := time.Now()
-	msgs, err := QueryMessages(srv, user, query)
+	msgs, err := QueryMessages(ctx, srv, user, query)
 	if err != nil {
 		// TODO(bzz): add several reties
 		return nil, err
 	}
-	log.Printf("%d messages found under %q (took %.0f sec)", len(msgs), query, time.Since(start).Seconds())
+	log.Printf("%d messages fetcged with %q (took %.0f sec)", len(msgs), query, time.Since(start).Seconds())
 	return msgs, nil
 }
 
 // QueryMessages returns the all messages, matching a query for a given user.
-func QueryMessages(srv *gmail.Service, user, query string) ([]*gmail.Message, error) {
+func QueryMessages(ctx context.Context, srv *gmail.Service, user, query string) ([]*gmail.Message, error) {
 	var messages []*gmail.Message
 	page := 0 // iterate pages
-	err := srv.Users.Messages.List(user).Q(query).Pages(context.TODO(), func(mr *gmail.ListMessagesResponse) error {
-		log.Printf("page %d: found %d messages, fetching ...", page, len(mr.Messages)) // TODO(bzz): debug level only
 
+	err := srv.Users.Messages.List(user).Q(query).Pages(ctx, func(mr *gmail.ListMessagesResponse) error {
+		log.Printf("page %d: found %d messages, fetching ...", page, len(mr.Messages)) // TODO(bzz): debug level only
 		bar := pb.Full.Start(len(mr.Messages))
 		bar.SetMaxWidth(100)
+		defer bar.Finish()
+
 		for _, m := range mr.Messages {
 			bar.Increment()
+			// TODO(bzz): switch to the batched Get as soon as it's avaiable
+			// https://github.com/googleapis/google-api-go-client/issues/435
 			msg, err := srv.Users.Messages.Get(user, m.Id).Do()
 			if err != nil {
 				return err
@@ -146,7 +151,6 @@ func QueryMessages(srv *gmail.Service, user, query string) ([]*gmail.Message, er
 			messages = append(messages, msg)
 		}
 
-		bar.Finish()
 		log.Printf("page %d: %d messaged fetched", page, len(mr.Messages)) // TODO(bzz): debug level only
 		page++
 		return nil
@@ -157,6 +161,12 @@ func QueryMessages(srv *gmail.Service, user, query string) ([]*gmail.Message, er
 	}
 
 	return messages, nil
+}
+
+// FormatAsID formats human-readable lable as ID, consumable by Gmail API.
+func FormatAsID(label string) string {
+	// TODO(bzz): test with labels in on Gmail in Chinese/emoji
+	return strings.ToLower(strings.ReplaceAll(label, " ", "-"))
 }
 
 // Subject returns the Subject header of a message

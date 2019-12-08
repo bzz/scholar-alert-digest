@@ -114,7 +114,6 @@ func NewSessionCookie(token *oauth2.Token) *http.Cookie {
 
 // NewLabelCookie returns a new cookie with the token set.
 func NewLabelCookie(label string) *http.Cookie {
-	// TODO(bzz): test with labels in on Gmail in Chinese/emoji
 	labelVal := base64.StdEncoding.EncodeToString([]byte(label))
 
 	return &http.Cookie{

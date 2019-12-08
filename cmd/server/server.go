@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -82,35 +81,41 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	// get token, stored in context by middleware (from cookies)
 	tok, authorized := token.FromContext(r.Context())
 	if !authorized { // TODO(bzz): move this to middleware
-		// w.WriteHeader(http.StatusNotFound)
-		// w.Write([]byte("Not logged in: go to /login\n"))
+		log.Printf("Redirecting to /login as three is no session")
 		http.Redirect(w, r, "/login", http.StatusFound)
+		return
 	}
 
 	gmailLabel, hasLabel := token.LabelFromContext(r.Context())
 	if !hasLabel {
+		log.Printf("Redirecting to /labels as there is no label")
 		http.Redirect(w, r, "/labels", http.StatusFound)
+		return
 	}
 
 	// fetch messages
 	srv, _ := gmail.New(oauthCfg.Client(r.Context(), tok)) // ignore as client != nil
-	msgs, err := gmailutils.Fetch(srv, "me", fmt.Sprintf("label:%s is:unread", gmailLabel))
+	msgs, err := gmailutils.Fetch(r.Context(), srv, "me", fmt.Sprintf("label:%s is:unread", gmailLabel))
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(err.Error()))
 		return
 	}
 
-	// print
-	var buf bytes.Buffer
-	json.NewEncoder(&buf).Encode(msgs) // FIXME(bzz): handle JSON encoding failures
-	w.Write(buf.Bytes())
+	// TODO(bzz):
+	//  add spniner? fetching takes ~20 sec for me
+	//  aggregate msgs
+	//  render HTML template
+
+	// just print, for now
+	json.NewEncoder(w).Encode(msgs) // FIXME(bzz): handle JSON encoding failures
 }
 
 func handleLabels(w http.ResponseWriter, r *http.Request) {
 	tok, authorized := token.FromContext(r.Context())
 	if !authorized { // TODO(bzz): move this to middleware
 		http.Redirect(w, r, "/login", http.StatusFound)
+		return
 	}
 
 	switch r.Method {
@@ -120,20 +125,6 @@ func handleLabels(w http.ResponseWriter, r *http.Request) {
 		saveLabelToCookies(w, r)
 		http.Redirect(w, r, "/", http.StatusFound)
 	}
-}
-
-func saveLabelToCookies(w http.ResponseWriter, r *http.Request) {
-	err := r.ParseForm()
-	if err != nil { // url query part is not valid
-		log.Printf("Unable to parse query string: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	label := r.FormValue("label")
-
-	cookie := token.NewLabelCookie(label)
-	log.Printf("Saving new cookie: %s", cookie.String())
-	http.SetCookie(w, cookie)
 }
 
 func fetchLabelsAndServeForm(w http.ResponseWriter, r *http.Request, tok *oauth2.Token) {
@@ -161,6 +152,21 @@ func fetchLabelsAndServeForm(w http.ResponseWriter, r *http.Request, tok *oauth2
 	if err != nil {
 		log.Printf("Failed to render a template: %v", err)
 	}
+}
+
+func saveLabelToCookies(w http.ResponseWriter, r *http.Request) {
+	err := r.ParseForm()
+	if err != nil { // url query part is not valid
+		log.Printf("Unable to parse query string: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	humanLabel := r.FormValue("label")
+	label := gmailutils.FormatAsID(humanLabel)
+
+	cookie := token.NewLabelCookie(label)
+	log.Printf("Saving new cookie: %s", cookie.String())
+	http.SetCookie(w, cookie)
 }
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -198,8 +204,9 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 // sessionMiddleware reads token from session cookie, saves it into the Context.
 func sessionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println(r.Method, "-", r.RequestURI /*, r.Cookies()*/)
+		log.Println(r.Method, "-", r.RequestURI /*, r.Cookies()*/) // TODO(bzz): make cookies debug level only
 		ctx := token.NewSessionContext(r.Context(), r.Cookies())
+		ctx = token.NewLabelContext(ctx, r.Cookies())
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
