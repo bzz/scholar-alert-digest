@@ -270,16 +270,12 @@ func extractPaperURL(scholarURL string) (string, error) {
 		longURL = longURL[:sufix]
 	}
 
-	url, err := url.QueryUnescape(longURL)
-	if err != nil {
-		return "", err
-	}
-	return url, nil
+	return url.QueryUnescape(longURL)
 }
 
 func separateFirstLine(text string) []string {
 	text = strings.ReplaceAll(text, "\n", "")
-	n := 80 // TODO(bzz): whitespace-aware splitting alg capped by max N
+	n := 80 // TODO(bzz): utf8 whitespace-aware splitting alg capped by max N runes
 	if len(text) < n {
 		return []string{text, ""}
 	}
