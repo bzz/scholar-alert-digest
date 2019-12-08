@@ -38,8 +38,8 @@ import (
 )
 
 const (
-	labelName  = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
-	scholarURL = "http://scholar.google.com/scholar_url?url="
+	labelName        = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
+	scholarPrefixURL = "http://scholar.google.com/scholar_url?url="
 
 	usageMessage = `usage: go run [-labels] [-html] [-mark] [-read] [-l <your-gmail-label>]
 
@@ -234,8 +234,7 @@ func extractPapersFromMsg(m *gmail.Message) ([]paper, error) {
 		title := strings.TrimSpace(htmlquery.InnerText(aTitle))
 		abs := strings.TrimSpace(htmlquery.InnerText(abss[i]))
 
-		longURL := strings.TrimPrefix(htmlquery.InnerText(urls[i]), scholarURL)
-		url, err := url.QueryUnescape(longURL[:strings.Index(longURL, "&")])
+		url, err := extractPaperURL(htmlquery.InnerText(urls[i]))
 		if err != nil {
 			log.Printf("Skipping paper %q in %q: %s", title, subj, err)
 			continue
@@ -248,6 +247,15 @@ func extractPapersFromMsg(m *gmail.Message) ([]paper, error) {
 		})
 	}
 	return papers, nil
+}
+
+func extractPaperURL(scholarURL string) (string, error) {
+	longURL := strings.TrimPrefix(scholarURL, scholarPrefixURL)
+	url, err := url.QueryUnescape(longURL[:strings.Index(longURL, "&")])
+	if err != nil {
+		return "", err
+	}
+	return url, nil
 }
 
 func separateFirstLine(text string) []string {
