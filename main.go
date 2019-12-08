@@ -15,6 +15,11 @@
  */
 
 // CLI tool for aggregating unread messages in Gmail from Google Scholar Alert.
+//
+// It does so by:
+//  - fetching messages under a certian Gmail label
+//  - transforming and aggregateing them into map[paper]int
+//  - rendering a text/template with it, in Markdown or HTML
 package main
 
 import (
@@ -380,6 +385,10 @@ func sortedKeys(m map[paper]int) []paper {
 	return sm.s
 }
 
+// paper is a map key, thus aggregation take into account all it's fields.
+//
+// TODO(bzz): think about aggregation only by the title, as suggested in
+// https://github.com/bzz/scholar-alert-digest/issues/12#issuecomment-562820924
 type paper struct {
 	Title, URL string
 	Abstract   abstract
