@@ -27,17 +27,15 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"sort"
 	"strings"
-	"text/template"
-	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
+	mrkdwn "github.com/bzz/scholar-alert-digest/markdown"
 	"github.com/bzz/scholar-alert-digest/papers"
 
 	"gitlab.com/golang-commonmark/markdown"
@@ -220,57 +218,14 @@ func splitOnDash(str string) ([]string, string) {
 
 func generateAndPrintHTML(msgsCnt, titlesCnt int, unread, read map[papers.Paper]int) {
 	var mdBuf bytes.Buffer
-	generateMarkdown(&mdBuf, msgsCnt, titlesCnt, unread, read)
+	mrkdwn.GenerateMd(&mdBuf, newMdTemplText, oldMdTemplText, msgsCnt, titlesCnt, unread, read)
 
 	md := markdown.New(markdown.XHTMLOutput(true), markdown.HTML(true))
 	fmt.Printf(htmlTemplText, md.RenderToString([]byte(mdBuf.String())))
 }
 
 func generateAndPrintMarkdown(msgsCnt, titlesCnt int, unread, read map[papers.Paper]int) {
-	generateMarkdown(os.Stdout, msgsCnt, titlesCnt, unread, read)
-}
-
-func generateMarkdown(out io.Writer, msgsCnt, titlesCnt int, unread, read map[papers.Paper]int) {
-	newMdReport(out, msgsCnt, titlesCnt, unread)
-	if read != nil {
-		oldMdReport(out, read)
-	}
-}
-
-// renderes newMdTemplText for new, unread papers.
-func newMdReport(out io.Writer, msgsCnt, titlesCnt int, agrPapers map[papers.Paper]int) {
-	tmplText := newMdTemplText
-	tmpl := template.Must(template.New("unread-papers").Funcs(template.FuncMap{
-		"sortedKeys": papers.SortedKeys,
-	}).Parse(tmplText))
-	err := tmpl.Execute(out, struct {
-		Date         string
-		UnreadEmails int
-		TotalPapers  int
-		UniqPapers   int
-		Papers       map[papers.Paper]int
-	}{
-		time.Now().Format(time.RFC3339),
-		msgsCnt,
-		titlesCnt,
-		len(agrPapers),
-		agrPapers,
-	})
-	if err != nil {
-		log.Fatalf("template %q execution failed: %s", tmplText, err)
-	}
-}
-
-// renderes oldMdTemplText for old, read papers
-func oldMdReport(out io.Writer, agrPapers map[papers.Paper]int) {
-	tmplText := oldMdTemplText
-	tmpl := template.Must(template.New("read-papers").Funcs(template.FuncMap{
-		"sortedKeys": papers.SortedKeys,
-	}).Parse(tmplText))
-	err := tmpl.Execute(out, agrPapers)
-	if err != nil {
-		log.Fatalf("template %q execution failed: %s", tmplText, err)
-	}
+	mrkdwn.GenerateMd(os.Stdout, newMdTemplText, oldMdTemplText, msgsCnt, titlesCnt, unread, read)
 }
 
 func markGmailMsgsUnread(srv *gmail.Service, user string, messages []*gmail.Message) {
