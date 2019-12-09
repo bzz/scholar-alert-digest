@@ -139,6 +139,8 @@ func main() {
 
 	// TODO(bzz): fetchGmailAsync returning chan *gmail.Message
 	var urMsgs []*gmail.Message = fetchGmail(srv, user, fmt.Sprintf("label:%s is:unread", *gmailLabel))
+	dumpParsedSubjects(urMsgs)
+	return
 	errCnt, urTitlesCnt, urTitles := extractPapersFromMsgs(urMsgs)
 
 	var rTitles map[paper]int
@@ -162,6 +164,23 @@ func main() {
 
 	if errCnt != 0 {
 		log.Printf("Errors: %d\n", errCnt)
+	}
+}
+
+func dumpParsedSubjects(msgs []*gmail.Message) {
+	var subjs []string
+	for _, m := range msgs {
+		subj := gmailutils.Subject(m.Payload)
+		srcType := strings.Split(subj, " - ")
+		if len(srcType) != 2 {
+			log.Printf("subject %q has unexpected format", subj)
+		}
+
+		subjs = append(subjs, fmt.Sprintf("%-20s %-20s", srcType[1], srcType[0]))
+	}
+	sort.Strings(subjs)
+	for _, s := range subjs {
+		fmt.Printf("%s\n", s)
 	}
 }
 
