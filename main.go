@@ -174,6 +174,7 @@ func dumpParsedSubjects(msgs []*gmail.Message) {
 		srcType := strings.Split(subj, " - ")
 		if len(srcType) != 2 {
 			log.Printf("subject %q has unexpected format", subj)
+			continue
 		}
 
 		subjs = append(subjs, fmt.Sprintf("%-20s %-20s", srcType[1], srcType[0]))
