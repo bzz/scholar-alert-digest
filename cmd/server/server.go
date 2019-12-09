@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"html/template"
 	"log"
@@ -11,7 +11,10 @@ import (
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 	"github.com/bzz/scholar-alert-digest/gmailutils/token"
+	mrkdwn "github.com/bzz/scholar-alert-digest/markdown"
+	"github.com/bzz/scholar-alert-digest/papers"
 
+	"gitlab.com/golang-commonmark/markdown"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/gmail/v1"
@@ -43,6 +46,24 @@ var ( // templates
 
   <input type="submit" value="Select Label"/>
 </form>
+{{ end }}
+`
+
+	newMdTemplText = `# Google Scholar Alert Digest
+
+**Date**: {{.Date}}
+**Unread emails**: {{.UnreadEmails}}
+**Paper titles**: {{.TotalPapers}}
+**Uniq paper titles**: {{.UniqPapers}}
+
+## New papers
+{{ range $paper := sortedKeys .Papers }}
+ - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
+   {{- if .Abstract.Full }}
+   <details>
+     <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
+   </details>
+   {{ end }}
 {{ end }}
 `
 )
@@ -95,20 +116,45 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 
 	// fetch messages
 	srv, _ := gmail.New(oauthCfg.Client(r.Context(), tok)) // ignore as client != nil
-	msgs, err := gmailutils.Fetch(r.Context(), srv, "me", fmt.Sprintf("label:%s is:unread", gmailLabel))
+	urMsgs, err := gmailutils.Fetch(r.Context(), srv, "me", fmt.Sprintf("label:%s is:unread", gmailLabel))
 	if err != nil {
+		// TODO(bzz): token expiration looks ugly here and must be handled elsewhere
 		w.WriteHeader(http.StatusServiceUnavailable)
 		w.Write([]byte(err.Error()))
 		return
 	}
 
-	// TODO(bzz):
-	//  add spniner? fetching takes ~20 sec for me
-	//  aggregate msgs
-	//  render HTML template
+	// aggregate
+	errCnt, urTitlesCnt, urTitles := papers.ExtractPapersFromMsgs(urMsgs)
+	if errCnt != 0 {
+		log.Printf("%d errors found, extracting the papers", errCnt)
+	}
 
-	// just print, for now
-	json.NewEncoder(w).Encode(msgs) // FIXME(bzz): handle JSON encoding failures
+	// render: generate Md, render to HTML
+	var mdBuf bytes.Buffer
+	mrkdwn.GenerateMd(&mdBuf, newMdTemplText, "", len(urMsgs), urTitlesCnt, urTitles, nil)
+
+	htmlTemplText := `<!DOCTYPE html>
+	<html lang="en">
+	  <head><meta charset="UTF-8"></head>
+	  <body>%s</body>
+	</html>
+	`
+	md := markdown.New(markdown.XHTMLOutput(true), markdown.HTML(true))
+	w.Write([]byte(fmt.Sprintf(htmlTemplText, md.RenderToString([]byte(mdBuf.String())))))
+
+	// TODO(bzz):
+	//  add spniner! fetching takes ~20 sec easy
+	//  use html/tmeplate tempate
+
+	// tmpl := template.Must( // render combination of the nested templates
+	// 	template.Must(
+	// 		template.New("papers-list").Parse(layout)).
+	// 		Parse(papersListPage))
+	// err = tmpl.Execute(w, papers)
+	// if err != nil {
+	// 	log.Printf("Failed to render a papersList template: %v", err)
+	// }
 }
 
 func handleLabels(w http.ResponseWriter, r *http.Request) {
