@@ -1,4 +1,4 @@
-package main
+package papers
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Unit test for the CLI utilities.
+// UnitTests for paper extraction.
 
 func TestScholarURLExtraction(t *testing.T) {
 	var fixtures = []struct {
