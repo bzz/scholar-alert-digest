@@ -124,7 +124,7 @@ func Fetch(ctx context.Context, srv *gmail.Service, user, query string) ([]*gmai
 		// TODO(bzz): add several reties
 		return nil, err
 	}
-	log.Printf("%d messages fetcged with %q (took %.0f sec)", len(msgs), query, time.Since(start).Seconds())
+	log.Printf("%d messages fetched with %q (took %.0f sec)", len(msgs), query, time.Since(start).Seconds())
 	return msgs, nil
 }
 
@@ -134,7 +134,7 @@ func QueryMessages(ctx context.Context, srv *gmail.Service, user, query string) 
 	page := 0 // iterate pages
 
 	err := srv.Users.Messages.List(user).Q(query).Pages(ctx, func(mr *gmail.ListMessagesResponse) error {
-		log.Printf("page %d: found %d messages, fetching ...", page, len(mr.Messages)) // TODO(bzz): debug level only
+		log.Printf("search found %d messages, fetching", len(mr.Messages)) // TODO(bzz): debug level only
 		bar := pb.Full.Start(len(mr.Messages))
 		bar.SetMaxWidth(100)
 		defer bar.Finish()
