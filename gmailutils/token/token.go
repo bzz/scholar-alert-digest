@@ -108,6 +108,7 @@ func NewSessionCookie(token *oauth2.Token) *http.Cookie {
 		Name:     string(sessionKey),
 		Value:    sessionVal,
 		Path:     "/",
+		Expires:  token.Expiry,
 		HttpOnly: true,
 	}
 }
