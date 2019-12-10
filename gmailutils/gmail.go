@@ -117,7 +117,7 @@ func PrintAllLabels(srv *gmail.Service, user string) {
 
 // Fetch fetches all messages matching a given query from the Gmail.
 func Fetch(ctx context.Context, srv *gmail.Service, user, query string) ([]*gmail.Message, error) {
-	log.Printf("Search and fetch messages from Gmail: %q", query)
+	log.Printf("searching and fetching messages from Gmail: %q", query)
 	start := time.Now()
 	msgs, err := QueryMessages(ctx, srv, user, query)
 	if err != nil {

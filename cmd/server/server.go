@@ -59,9 +59,9 @@ var ( // templates
 ## New papers
 {{ range $paper := sortedKeys .Papers }}
  - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
-   {{- if .Abstract.Full }}
+   {{- if .Abstract.FirstLine }}
    <details>
-     <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
+     <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.Rest}}
    </details>
    {{ end }}
 {{ end }}
@@ -136,7 +136,11 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 
 	htmlTemplText := `<!DOCTYPE html>
 	<html lang="en">
-	  <head><meta charset="UTF-8"></head>
+	  <head>
+		<meta charset="UTF-8">
+		<link rel="icon" href="http://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/apple/232/page-with-curl_1f4c3.png">
+		<title>Scholar Alert Digest</title>
+	  </head>
 	  <body>%s</body>
 	</html>
 	`

@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/antchfx/htmlquery"
 	"google.golang.org/api/gmail/v1"
@@ -27,9 +29,9 @@ type Paper struct {
 	Abstract   Abstract
 }
 
-// Abstract represents a view of parsed abstract.
+// Abstract represents a view of the parsed abstract.
 type Abstract struct {
-	Full, FirstLine, RestLines string
+	FirstLine, Rest string
 }
 
 // Helpers for a Map, sorted by keys.
@@ -132,11 +134,9 @@ func extractPapersFromMsg(m *gmail.Message) ([]Paper, error) {
 			continue
 		}
 
-		papers = append(papers, Paper{
-			title, url, Abstract{
-				abs, separateFirstLine(abs)[0], separateFirstLine(abs)[1],
-			},
-		})
+		N, lookahead := 80, 10 // max number of runes to process
+		first, rest := separateFirstLine(abs, N, lookahead)
+		papers = append(papers, Paper{title, url, Abstract{first, rest}})
 	}
 	return papers, nil
 }
@@ -159,11 +159,41 @@ func extractPaperURL(scholarURL string) (string, error) {
 	return url.QueryUnescape(longURL)
 }
 
-func separateFirstLine(text string) []string {
+// separateFirstLine returns text, split into two parts: first short line and the rest.
+// N+lookehead is max length of the first. Split is done unicode whitespace,
+// if any around N +/-lookahead runes, or at Nth rune.
+func separateFirstLine(text string, N, lookahead int) (string, string) {
 	text = strings.ReplaceAll(text, "\n", "")
-	n := 80 // TODO(bzz): utf8 whitespace-aware splitting alg capped by max N runes
-	if len(text) < n {
-		return []string{text, ""}
+	if len(text) < N { // bytes, not code-points
+		return text, ""
 	}
-	return []string{text[:n], text[n:]}
+
+	pos := 0
+	n, nPos, lastSpace, lastSpacePos := 0, 0, 0, 0
+	for len(text[pos:]) > 0 {
+		if n >= N+lookahead {
+			break
+		}
+		char, width := utf8.DecodeRuneInString(text[pos:])
+		pos += width
+		if unicode.IsSpace(char) {
+			lastSpacePos = pos
+			lastSpace = n
+		}
+		n, nPos = n+1, pos
+	}
+
+	cut := nPos
+	if abs(N-lastSpace) < lookahead { // whitespace in lookahead neighborhood of Nth rune
+		cut = lastSpacePos
+	}
+	return strings.TrimRightFunc(text[:cut], unicode.IsSpace), text[cut:]
+}
+
+// abs returns the absolute value of x.
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }

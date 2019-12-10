@@ -68,7 +68,7 @@ The -subj flag will only include email subjects in the report. Usefull for pipin
 ## New papers
 {{ range $paper := sortedKeys .Papers }}
  - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
-   {{- if .Abstract.Full }}
+   {{- if .Abstract.FirstLine }}
    <details>
      <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
    </details>
@@ -83,9 +83,9 @@ The -subj flag will only include email subjects in the report. Usefull for pipin
 
 {{ range $paper := sortedKeys . }}
   - [{{ .Title }}]({{ .URL }})
-    {{- if .Abstract.Full }}
+    {{- if .Abstract.FirstLine }}
     <details>
-      <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
+      <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.Rest}}
     </details>
     {{ end }}
 {{ end }}
