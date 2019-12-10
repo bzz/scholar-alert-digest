@@ -95,8 +95,9 @@ func PrintAllLabels(srv *gmail.Service, user string) {
 func QueryMessages(srv *gmail.Service, user, query string) []*gmail.Message {
 	var messages []*gmail.Message
 	page := 0 // iterate pages
-	err := srv.Users.Messages.List(user).Q(query).Pages(context.TODO(), func(rm *gmail.ListMessagesResponse) error {
-		for _, m := range rm.Messages {
+	err := srv.Users.Messages.List(user).Q(query).Pages(context.TODO(), func(mr *gmail.ListMessagesResponse) error {
+		log.Printf("page %d: found %d messages, fetching ...", page, len(mr.Messages)) // TODO(bzz): debug level only
+		for _, m := range mr.Messages {
 			msg, err := srv.Users.Messages.Get(user, m.Id).Do()
 			if err != nil {
 				return err
@@ -104,10 +105,13 @@ func QueryMessages(srv *gmail.Service, user, query string) []*gmail.Message {
 
 			messages = append(messages, msg)
 		}
+
+		log.Printf("page %d: %d messaged fetched", page, len(mr.Messages)) // TODO(bzz): debug level only
+		page++
 		return nil
 	})
 	if err != nil {
-		log.Fatalf("Unable to retrieve messages with query %q, page %d: %v", query, page, err)
+		log.Fatalf("Unable to retrieve messages with the query %q, page %d: %v", query, page, err)
 	}
 
 	return messages

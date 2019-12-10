@@ -176,6 +176,7 @@ func main() {
 }
 
 func printSubjects(msgs []*gmail.Message) {
+	log.Printf("will only extract subjects from those %d messages", len(msgs))
 	var subjs []string
 	for _, m := range msgs {
 		subj := gmailutils.Subject(m.Payload)
@@ -185,7 +186,7 @@ func printSubjects(msgs []*gmail.Message) {
 			continue
 		}
 
-		subjs = append(subjs, fmt.Sprintf("%-21s %s", srcType[1], srcType[0]))
+		subjs = append(subjs, fmt.Sprintf("%-22s | %s", srcType[1], srcType[0]))
 	}
 	sort.Strings(subjs)
 	for _, s := range subjs {
@@ -211,9 +212,10 @@ func splitOnDash(str string) ([]string, string) {
 
 // fetchGmail fetches all messages matching a given query from the Gmail.
 func fetchGmail(srv *gmail.Service, user, query string) []*gmail.Message {
+	log.Printf("searching Gmail messages, query: %q", query)
 	start := time.Now()
 	msgs := gmailutils.QueryMessages(srv, user, query)
-	log.Printf("%d messages found under %q (took %.0f sec)", len(msgs), query, time.Since(start).Seconds())
+	log.Printf("got %d messages total (took %.0f sec)", len(msgs), time.Since(start).Seconds())
 	return msgs
 }
 
