@@ -72,8 +72,8 @@ var ( // configuration
 	addr     = "localhost:8080"
 	oauthCfg = &oauth2.Config{
 		// from https://console.developers.google.com/project/<your-project-id>/apiui/credential
-		ClientID:     os.Getenv("SAL_GOOGLE_ID"),
-		ClientSecret: os.Getenv("SAL_GOOGLE_SECRET"),
+		ClientID:     os.Getenv("SAD_GOOGLE_ID"),
+		ClientSecret: os.Getenv("SAD_GOOGLE_SECRET"),
 		RedirectURL:  "http://localhost:8080/login/authorized",
 		Endpoint:     google.Endpoint,
 		Scopes:       []string{gmail.GmailReadonlyScope},
