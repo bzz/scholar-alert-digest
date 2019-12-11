@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go v0.49.0 // indirect
 	github.com/antchfx/htmlquery v1.2.0
 	github.com/antchfx/xpath v1.1.2 // indirect
+	github.com/cheggaaa/pb/v3 v3.0.3
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/stretchr/testify v1.4.0
@@ -13,7 +14,6 @@ require (
 	go.opencensus.io v0.22.2 // indirect
 	golang.org/x/net v0.0.0-20191126235420-ef20fe5d7933
 	golang.org/x/oauth2 v0.0.0-20191122200657-5d9234df094c
-	golang.org/x/sys v0.0.0-20191127021746-63cb32ae39b2 // indirect
 	google.golang.org/api v0.14.0
 	google.golang.org/appengine v1.6.5 // indirect
 	google.golang.org/genproto v0.0.0-20191115221424-83cc0476cb11 // indirect

@@ -35,6 +35,8 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 
@@ -56,6 +58,7 @@ The -labels flag will only list all available labels for the current account.
 The -html flag will produce ouput report in HTML format.
 The -mark flag will mark all the aggregated emails as read in Gmail.
 The -read flag will include a new section in the report, aggregating all read emails.
+The -subj flag will only include email subjects in the report. Usefull for piping "uniq -c | sort -dr".
 `
 
 	newMdTemplText = `# Google Scholar Alert Digest
@@ -110,6 +113,7 @@ var (
 	ouputHTML = flag.Bool("html", false, "output report in HTML (instead of default Markdown)")
 	markRead  = flag.Bool("mark", false, "marks all aggregated emails as read")
 	read      = flag.Bool("read", false, "include read emails to a separate section of the report")
+	onlySubj  = flag.Bool("subj", false, "aggregate only email subjects")
 )
 
 func usage() {
@@ -135,6 +139,12 @@ func main() {
 	// override lable name by env var
 	if envLabel, ok := os.LookupEnv("SAD_LABEL"); ok {
 		gmailLabel = &envLabel
+	}
+
+	if *onlySubj {
+		msgs := fetchGmail(srv, user, fmt.Sprintf("label:%s", *gmailLabel))
+		printSubjects(msgs)
+		os.Exit(0)
 	}
 
 	// TODO(bzz): fetchGmailAsync returning chan *gmail.Message
@@ -165,11 +175,47 @@ func main() {
 	}
 }
 
+func printSubjects(msgs []*gmail.Message) {
+	log.Printf("will only extract subjects from those %d messages", len(msgs))
+	var subjs []string
+	for _, m := range msgs {
+		subj := gmailutils.Subject(m.Payload)
+		srcType, sep := splitOnDash(subj)
+		if len(srcType) != 2 {
+			log.Printf("subject %q can not be split by %q", subj, sep)
+			continue
+		}
+
+		subjs = append(subjs, fmt.Sprintf("%-22s | %s", srcType[1], srcType[0]))
+	}
+	sort.Strings(subjs)
+	for _, s := range subjs {
+		fmt.Printf("%s\n", s)
+	}
+}
+
+// splitOnDash returns str, split on unicode Dash and a separator.
+func splitOnDash(str string) ([]string, string) {
+	s := str
+	dash := "-"
+	for len(s) > 0 {
+		r, size := utf8.DecodeRuneInString(s)
+		s = s[size:]
+		if unicode.In(r, unicode.Dash) {
+			dash = string(r)
+			break
+		}
+	}
+	sep := fmt.Sprintf(" %s ", dash)
+	return strings.Split(str, sep), sep
+}
+
 // fetchGmail fetches all messages matching a given query from the Gmail.
 func fetchGmail(srv *gmail.Service, user, query string) []*gmail.Message {
+	log.Printf("searching Gmail messages, query: %q", query)
 	start := time.Now()
 	msgs := gmailutils.QueryMessages(srv, user, query)
-	log.Printf("%d messages found under %q (took %.0f sec)", len(msgs), query, time.Since(start).Seconds())
+	log.Printf("got %d messages total (took %.0f sec)", len(msgs), time.Since(start).Seconds())
 	return msgs
 }
 
