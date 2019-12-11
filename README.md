@@ -72,10 +72,11 @@ go run main.go -subj | uniq -c | sort -dr
 Web UI that exposes basic HTML report generation to multiple concurrent users.
 
 ## Configure
-It does not support same OAuth client credentials as CLI from `credentials.json`.
+It does not support the same OAuth client credentials as CLI from `credentials.json`.
+
 It requires:
  - To create a new credentials in your API project `https://console.developers.google.com/apis/credentials?project=quickstart-<NNN>`
- - "Create credentials" -> "Web application" type
+ - "Credentials" -> "Create credentials" -> "Web application" type
  - Add http://localhost/login/authorized value to `Authorized redirect URIs` field
  - Copy the `Client ID` and `Client secret`
 
