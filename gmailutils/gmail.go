@@ -129,6 +129,7 @@ func Fetch(ctx context.Context, srv *gmail.Service, user, query string) ([]*gmai
 }
 
 // QueryMessages returns the all messages, matching a query for a given user.
+// TODO(bzz): rename to query+fetch, merge better loggin from subject branch
 func QueryMessages(ctx context.Context, srv *gmail.Service, user, query string) ([]*gmail.Message, error) {
 	var messages []*gmail.Message
 	page := 0 // iterate pages

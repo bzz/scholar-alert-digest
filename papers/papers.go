@@ -61,6 +61,7 @@ func SortedKeys(m map[Paper]int) []Paper {
 }
 
 // ExtractPapersFromMsgs parses the messages payloads and creates Papers.
+// TODO(bzz): rename to extract+aggregate
 func ExtractPapersFromMsgs(messages []*gmail.Message) (int, int, map[Paper]int) {
 	errCount := 0
 	titlesCount := 0
@@ -73,6 +74,7 @@ func ExtractPapersFromMsgs(messages []*gmail.Message) (int, int, map[Paper]int) 
 			continue
 		}
 
+		// aggregate
 		titlesCount += len(papers)
 		for _, paper := range papers { // map title to uniqTitles
 			uniqTitles[paper]++
