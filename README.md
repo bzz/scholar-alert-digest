@@ -9,7 +9,7 @@ a Gmail label from the Google Scholar alerts, grouping papers by title and produ
  1. Search on Google Scholar for a paper of author
  2. Create an Alert (for citations, new or similar publications)
  3. Create a Gmail filter, moving all those emails under a dedicated Label
- 4. Run this tool to get an aggregated report (in Markdown or HTML) of all the paper from all unread emails
+ 4. Run this tool to get an aggregated report (in Markdown or HTML) of all the papers from unread emails
 
 # Install
 
@@ -20,20 +20,17 @@ either build a `scholar-alert-digest` binary and put it under `$GOPATH/bin` with
 cd "$(mktemp -d)" && go mod init scholar-alert-digest  && go get github.com/bzz/scholar-alert-digest
 ```
 
-or run from the sources by:
+or run it directly from the clone of the sources using `go` command, as described below.
 
-```
-git clone https://github.com/bzz/scholar-alert-digest.git
-cd scholar-alert-digest
-go run main.go -h
-```
+# CLI
 
-# Configure
+CLI tool for Markdown/HTML report generation.
+
+## Configure
 
 Turn on Gmail API & download `credentials.json` following [these steps](https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the).</br>
 _That will create a new 'Quickstart' app in API console under your account and authorize it to get access to your Gmail_
 
-# Run
 
 To find your specific label name:
 
@@ -50,6 +47,7 @@ export SAD_LABEL='<your-label-name>'
 go run main.go
 ```
 
+## Run
 In order to output rendered HTML instead of the default Markdown, use
 ```
 go run main.go -html
@@ -65,6 +63,39 @@ To include read emails in the separate section of the report, do
 go run main.go -read
 ```
 
+To only aggregate the email subjects do
+```
+go run main.go -subj | uniq -c | sort -dr
+```
+
+# Web server
+Web UI that exposes basic HTML report generation to multiple concurrent users.
+
+## Configure
+It does not support same OAuth client credentials as CLI from `credentials.json`.
+It requires
+ - a different  of .
+   Create new credentials in your API project `https://console.developers.google.com/apis/credentials?project=quickstart-<NNN>`
+ - "Create credentials" -> "Web application" type
+ - Add http://localhost/login/authorized value to `Authorized redirect URIs` field
+ - Copy the `Client ID` and `Client secret`
+
+Pass in the ID and the secret as env vars e.g by
+```
+export SAD_GOOGLE_ID='<client id>'
+export SAD_GOOGLE_SECRET='<client secret>'
+```
+
+You do not need to pass the label name on the startup as it can be chosen at
+runtime at [/labels](http://localhost:8080/labels).
+
+## Run
+The basic report generation is exposed though a web server that can be started with
+```
+go run ./cmd/server
+```
+
+will start a serve on http://localhost:8080
 
 # License
 

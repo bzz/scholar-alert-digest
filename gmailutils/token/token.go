@@ -18,11 +18,15 @@
 package token
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"strings"
 
 	"golang.org/x/oauth2"
 )
@@ -32,6 +36,7 @@ func FromWeb(config *oauth2.Config) *oauth2.Token {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	fmt.Fprintf(os.Stderr, "Go to the following link in your browser then type the "+
 		"authorization code: \n%v\n", authURL)
+	// TODO(bzz): open URL in browser https://github.com/youtube/api-samples/blob/master/go/oauth2.go#L124
 
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
@@ -55,6 +60,99 @@ func FromFile(file string) (*oauth2.Token, error) {
 	tok := &oauth2.Token{}
 	err = json.NewDecoder(f).Decode(tok)
 	return tok, err
+}
+
+// TODO(bzz): move to session.go, cookies/context are together due to sharing the Key
+// contextKey is unexported type to prevent collisions with context keys.
+type contextKey string
+
+const (
+	sessionKey contextKey = "session"
+	labelKey   contextKey = "label"
+)
+
+// FromContext returnes the token, saved from the cookies, if any.
+func FromContext(ctx context.Context) (*oauth2.Token, bool) {
+	token := ctx.Value(sessionKey)
+	if token == nil { // not authorized
+		return nil, false
+	}
+
+	var tok oauth2.Token
+	tokenStr := token.(string)
+	err := json.NewDecoder(strings.NewReader(tokenStr)).Decode(&tok)
+	if err != nil {
+		log.Printf("Unable to decode JSON cookie k:%s v:%s, %v", sessionKey, tokenStr, err)
+		return nil, true
+	}
+	return &tok, true
+}
+
+// LabelFromContext returnes the label, saved from the cookies, if any.
+func LabelFromContext(ctx context.Context) (string, bool) {
+	l := ctx.Value(labelKey)
+	if l == nil {
+		return "", false
+	}
+
+	return l.(string), true
+}
+
+// NewSessionCookie returns a new cookie with the token set.
+func NewSessionCookie(token *oauth2.Token) *http.Cookie {
+	var buf bytes.Buffer
+	json.NewEncoder(&buf).Encode(token) // FIXME(bzz): handle JSON encoding failures
+	sessionVal := base64.StdEncoding.EncodeToString(buf.Bytes())
+
+	return &http.Cookie{
+		Name:     string(sessionKey),
+		Value:    sessionVal,
+		Path:     "/",
+		Expires:  token.Expiry,
+		HttpOnly: true,
+	}
+}
+
+// NewLabelCookie returns a new cookie with the token set.
+func NewLabelCookie(label string) *http.Cookie {
+	labelVal := base64.StdEncoding.EncodeToString([]byte(label))
+
+	return &http.Cookie{
+		Name:  string(labelKey),
+		Value: labelVal,
+		Path:  "/",
+	}
+}
+
+// NewSessionContext reads session cookie, returnes context with the token set to it, if any.
+func NewSessionContext(parent context.Context, cookies []*http.Cookie) context.Context {
+	return newContextWith(parent, cookies, sessionKey)
+}
+
+// NewLabelContext reads label cookie, returnes context with the label set to it, if any.
+func NewLabelContext(parent context.Context, cookies []*http.Cookie) context.Context {
+	return newContextWith(parent, cookies, labelKey)
+}
+
+func newContextWith(parent context.Context, cookies []*http.Cookie, key contextKey) context.Context {
+	var sessionCookie *http.Cookie
+	for _, c := range cookies {
+		if c.Name == string(key) {
+			sessionCookie = c
+			break
+		}
+	}
+
+	if sessionCookie == nil {
+		return parent
+	}
+
+	sessionVal, err := base64.StdEncoding.DecodeString(sessionCookie.Value)
+	if err != nil {
+		log.Printf("Unable to decode base64 %s cookie: %v", string(key), err)
+		return parent
+	}
+	return context.WithValue(parent, key, string(sessionVal))
 }
 
 // Save saves the token to a file path.
