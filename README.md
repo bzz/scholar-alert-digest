@@ -96,6 +96,9 @@ go run ./cmd/server
 
 will start a server on http://localhost:8080
 
+Start by visiting http://localhost:8080/login to get the user OAuth access token.
+Visit http://localhost:8080/labels to chose your label name.
+
 # License
 
 Apache License, Version 2.0. See [LICENSE](LICENSE)
