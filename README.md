@@ -73,15 +73,14 @@ Web UI that exposes basic HTML report generation to multiple concurrent users.
 
 ## Configure
 It does not support same OAuth client credentials as CLI from `credentials.json`.
-It requires
- - a different  of .
-   Create new credentials in your API project `https://console.developers.google.com/apis/credentials?project=quickstart-<NNN>`
+It requires:
+ - To create a new credentials in your API project `https://console.developers.google.com/apis/credentials?project=quickstart-<NNN>`
  - "Create credentials" -> "Web application" type
  - Add http://localhost/login/authorized value to `Authorized redirect URIs` field
  - Copy the `Client ID` and `Client secret`
 
 Pass in the ID and the secret as env vars e.g by
-```
+```shell
 export SAD_GOOGLE_ID='<client id>'
 export SAD_GOOGLE_SECRET='<client secret>'
 ```
@@ -95,7 +94,7 @@ The basic report generation is exposed though a web server that can be started w
 go run ./cmd/server
 ```
 
-will start a serve on http://localhost:8080
+will start a server on http://localhost:8080
 
 # License
 
