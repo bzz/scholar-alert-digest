@@ -70,7 +70,7 @@ The -subj flag will only include email subjects in the report. Usefull for pipin
  - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
    {{- if .Abstract.FirstLine }}
    <details>
-     <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.RestLines}}
+     <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.Rest}}
    </details>
    {{ end }}
 {{ end }}
