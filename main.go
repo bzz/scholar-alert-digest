@@ -141,8 +141,13 @@ func main() {
 	}
 
 	if *onlySubj {
-		log.Print("only extracting subjects from all gmail messages")
-		msgs, err := gmailutils.Fetch(context.TODO(), srv, user, fmt.Sprintf("label:%s", *gmailLabel))
+		log.Print("only extracting the subjects")
+		query := fmt.Sprintf("label:%s is:unread", *gmailLabel)
+		if *read {
+			query = strings.TrimSuffix(query, " is:unread")
+		}
+
+		msgs, err := gmailutils.Fetch(context.TODO(), srv, user, query)
 		if err != nil {
 			log.Fatalf("Failed to fetch messages from Gmail: %v", err)
 		}
@@ -158,6 +163,7 @@ func main() {
 	}
 	errCnt, urTitlesCnt, urTitles := papers.ExtractPapersFromMsgs(urMsgs)
 
+	// TODO(bzz): define a new type aggPapers
 	var rTitles map[papers.Paper]int
 	if *read {
 		rMsgs, err := gmailutils.Fetch(context.TODO(), srv, user, fmt.Sprintf("label:%s is:read", *gmailLabel))
@@ -168,15 +174,8 @@ func main() {
 	}
 
 	if *outputJSON {
-		log.Print("formatting gmail messages in JSON")
-		encoder := json.NewEncoder(os.Stdout)
-		for _, k := range papers.SortedKeys(urTitles) {
-			encoder.Encode(k)
-		}
-		os.Exit(0)
-	}
-
-	if *outputHTML {
+		generateAndPrintJSON(urTitles, rTitles)
+	} else if *outputHTML {
 		generateAndPrintHTML(len(urMsgs), urTitlesCnt, urTitles, rTitles)
 	} else {
 		generateAndPrintMarkdown(len(urMsgs), urTitlesCnt, urTitles, rTitles)
@@ -226,6 +225,17 @@ func splitOnDash(str string) ([]string, string) {
 	}
 	sep := fmt.Sprintf(" %s ", dash)
 	return strings.Split(str, sep), sep
+}
+
+func generateAndPrintJSON(urTitles, rTitles map[papers.Paper]int) {
+	log.Print("formatting gmail messages in JSON")
+	encoder := json.NewEncoder(os.Stdout)
+	for _, p := range papers.SortedKeys(urTitles) {
+		encoder.Encode(p)
+	}
+	for _, p := range papers.SortedKeys(rTitles) {
+		encoder.Encode(p)
+	}
 }
 
 func generateAndPrintHTML(msgsCnt, titlesCnt int, unread, read map[papers.Paper]int) {
