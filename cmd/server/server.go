@@ -15,7 +15,6 @@ import (
 	mrkdwn "github.com/bzz/scholar-alert-digest/markdown"
 	"github.com/bzz/scholar-alert-digest/papers"
 
-	"gitlab.com/golang-commonmark/markdown"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/gmail/v1"
@@ -149,8 +148,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	  <body>%s</body>
 	</html>
 	`
-	md := markdown.New(markdown.XHTMLOutput(true), markdown.HTML(true))
-	w.Write([]byte(fmt.Sprintf(htmlTemplText, md.RenderToString([]byte(mdBuf.String())))))
+	w.Write([]byte(fmt.Sprintf(htmlTemplText, mrkdwn.Render(mdBuf.Bytes()))))
 
 	// TODO(bzz): use html/tmeplate instead
 	// tmpl := template.Must( // render combination of the nested templates
