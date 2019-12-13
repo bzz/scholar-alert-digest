@@ -2,7 +2,7 @@
 > aggregate google scholar email alerts by paper
 
 Simplifies scientific paper discovery by aggregating all unread emails under
-a Gmail label from the Google Scholar alerts, grouping papers by title and producing a report ([Markdown](https://gist.github.com/bzz/1e8445f71db03a7d57d94147279ee09f)/[HTML](https://gist.github.com/bzz/e1e3ef3e0cdabc254f4e75bfa5511bcb)).
+a Gmail label from the Google Scholar alerts, grouping papers by title and producing a report ([Markdown](https://gist.github.com/bzz/1e8445f71db03a7d57d94147279ee09f)/[HTML](https://gist.github.com/bzz/e1e3ef3e0cdabc254f4e75bfa5511bcb)/[JSON](https://gist.github.com/bzz/4feeec459bcd1ec21f919eaeb163ac7a)).
 
 # Workflow
 
@@ -48,9 +48,10 @@ go run main.go
 ```
 
 ## Run
-In order to output rendered HTML instead of the default Markdown, use
+In order to output rendered HTML or JSON instead of the default Markdown, use
 ```
 go run main.go -html
+go run main.go -json
 ```
 
 To mark all emails that were aggregated in current report as read, use
