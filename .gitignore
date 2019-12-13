@@ -1,2 +1,6 @@
 token*.json
 credentials.json
+
+__pycache__
+.venv/
+.vscode/
