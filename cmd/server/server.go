@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"log"
@@ -19,6 +20,8 @@ import (
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/gmail/v1"
 )
+
+const user = "me"
 
 var ( // templates
 	layout = `
@@ -69,8 +72,9 @@ var ( // templates
 )
 
 var ( // configuration
-	addr     = "localhost:8080"
-	oauthCfg = &oauth2.Config{
+	addr      = "localhost:8080"
+	concurReq = 10
+	oauthCfg  = &oauth2.Config{
 		// from https://console.developers.google.com/project/<your-project-id>/apiui/credential
 		ClientID:     os.Getenv("SAD_GOOGLE_ID"),
 		ClientSecret: os.Getenv("SAD_GOOGLE_SECRET"),
@@ -114,9 +118,10 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// fetch messages
-	srv, _ := gmail.New(oauthCfg.Client(r.Context(), tok)) // ignore as client != nil
-	urMsgs, err := gmailutils.Fetch(r.Context(), srv, "me", fmt.Sprintf("label:%s is:unread", gmailLabel))
+	// find and fetch the messages
+	srv, _ := gmail.New(oauthCfg.Client(r.Context(), tok)) // ignore err as client != nil
+	query := fmt.Sprintf("label:%s is:unread", gmailLabel)
+	urMsgs, err := gmailutils.FetchConcurent(context.Background(), srv, user, query, concurReq)
 	if err != nil {
 		// TODO(bzz): token expiration looks ugly here and must be handled elsewhere
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -147,13 +152,10 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	md := markdown.New(markdown.XHTMLOutput(true), markdown.HTML(true))
 	w.Write([]byte(fmt.Sprintf(htmlTemplText, md.RenderToString([]byte(mdBuf.String())))))
 
-	// TODO(bzz):
-	//  add spniner! fetching takes ~20 sec easy
-	//  use html/tmeplate tempate
-
+	// TODO(bzz): use html/tmeplate instead
 	// tmpl := template.Must( // render combination of the nested templates
 	// 	template.Must(
-	// 		template.New("papers-list").Parse(layout)).
+	// 		layoutTmpl.Copy()).
 	// 		Parse(papersListPage))
 	// err = tmpl.Execute(w, papers)
 	// if err != nil {

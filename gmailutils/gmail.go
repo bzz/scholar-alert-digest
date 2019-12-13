@@ -27,6 +27,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils/token"
@@ -115,53 +116,70 @@ func PrintAllLabels(srv *gmail.Service, user string) {
 	}
 }
 
-// Fetch fetches all messages matching a given query from the Gmail.
-func Fetch(ctx context.Context, srv *gmail.Service, user, query string) ([]*gmail.Message, error) {
+// FetchConcurent fetches matching messages for a given query in paralle from the Gmail.
+// It is blocking, but doing N concurrent fetche requests.
+// TODO(bzz): make it a method on the struct, that holds srv instance.
+func FetchConcurent(ctx context.Context, srv *gmail.Service, user, query string, concurentReq int) ([]*gmail.Message, error) {
 	log.Printf("searching and fetching messages from Gmail: %q", query)
 	start := time.Now()
-	msgs, err := QueryMessages(ctx, srv, user, query)
+	msgs, err := searchAndFetchConcurent(ctx, srv, user, query, concurentReq)
 	if err != nil {
-		// TODO(bzz): add several reties
 		return nil, err
 	}
-	log.Printf("%d messages fetched with %q (took %.0f sec)", len(msgs), query, time.Since(start).Seconds())
+	log.Printf("%d messages found&fetched with (took %.0f sec)", len(msgs), time.Since(start).Seconds())
 	return msgs, nil
 }
 
-// QueryMessages returns the all messages, matching a query for a given user.
-// TODO(bzz): rename to query+fetch, merge better loggin from subject branch
-func QueryMessages(ctx context.Context, srv *gmail.Service, user, query string) ([]*gmail.Message, error) {
-	var messages []*gmail.Message
-	page := 0 // iterate pages
+// TODO(bzz): make it a method on the struct, that holds srv instance.
+func searchAndFetchConcurent(ctx context.Context, srv *gmail.Service, user, query string, concurentReq int) ([]*gmail.Message, error) {
+	log.Printf("searching messages from Gmail: %q", query)
+	start := time.Now()
 
+	// search
+	var msgIDs []string
 	err := srv.Users.Messages.List(user).Q(query).Pages(ctx, func(mr *gmail.ListMessagesResponse) error {
-		log.Printf("search found %d messages, fetching", len(mr.Messages)) // TODO(bzz): debug level only
-		bar := pb.Full.Start(len(mr.Messages))
-		bar.SetMaxWidth(100)
-
-		for _, m := range mr.Messages {
-			bar.Increment()
-			// TODO(bzz): switch to the batched Get as soon as it's avaiable
-			// https://github.com/googleapis/google-api-go-client/issues/435
-			msg, err := srv.Users.Messages.Get(user, m.Id).Do()
-			if err != nil {
-				return err
-			}
-
-			messages = append(messages, msg)
+		for _, msg := range mr.Messages {
+			msgIDs = append(msgIDs, msg.Id)
 		}
-
-		bar.Finish() // defering it collides with next log
-		// log.Printf("page %d: %d messaged fetched", page, len(mr.Messages)) // TODO(bzz): debug level only
-		page++
 		return nil
 	})
 	if err != nil {
-		log.Printf("Unable to retrieve messages, query:%q, page:%d - %v", query, page, err)
+		log.Printf("Unable to list messages for query:%q - %v", query, err)
 		return nil, err
 	}
 
-	return messages, nil
+	log.Printf("%d messages found (took %.0f sec)", len(msgIDs), time.Since(start).Seconds())
+	start = time.Now()
+
+	// parallel fetch
+	bar := pb.Full.Start(len(msgIDs))
+	bar.SetMaxWidth(100)
+	var (
+		throttle = make(chan int, concurentReq)
+		wg       sync.WaitGroup
+		msgs     []*gmail.Message
+	)
+	for i := range msgIDs {
+		msgID := msgIDs[i]
+		wg.Add(1)
+		go func() {
+			throttle <- 1
+			defer func() { <-throttle; wg.Done() }()
+
+			bar.Increment()
+			msg, err := srv.Users.Messages.Get(user, msgID).Do()
+			if err != nil { // TODO(bzz): retry
+				log.Printf("Unable to fetch message by ID:%q", msgID)
+			}
+
+			msgs = append(msgs, msg)
+		}()
+	}
+	wg.Wait()
+	bar.Finish()
+
+	log.Printf("%d messages fetched (took %.0f sec)", len(msgIDs), time.Since(start).Seconds())
+	return msgs, nil
 }
 
 // FormatAsID formats human-readable lable as ID, consumable by Gmail API.

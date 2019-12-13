@@ -26,6 +26,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 
 	"golang.org/x/oauth2"
@@ -34,20 +36,39 @@ import (
 // FromWeb request a token from the web, then returns the retrieved token.
 func FromWeb(config *oauth2.Config) *oauth2.Token {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
-	fmt.Fprintf(os.Stderr, "Go to the following link in your browser then type the "+
+	fmt.Fprintf(os.Stderr, "Open this link in the browser, then past the "+
 		"authorization code: \n%v\n", authURL)
-	// TODO(bzz): open URL in browser https://github.com/youtube/api-samples/blob/master/go/oauth2.go#L124
+
+	_ = openURL(authURL) // ignore error as manual instuctions already provided
 
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
 		log.Fatalf("Unable to read authorization code: %v", err)
 	}
 
-	tok, err := config.Exchange(context.TODO(), authCode)
+	tok, err := config.Exchange(context.Background(), authCode)
 	if err != nil {
 		log.Fatalf("Unable to retrieve token from web: %v", err)
 	}
 	return tok
+}
+
+// openURL opens a browser window to the specified location.
+// This code originally appeared at:
+//   http://stackoverflow.com/questions/10377243/how-can-i-launch-a-process-that-is-not-a-file-in-go
+func openURL(url string) error {
+	var err error
+	switch runtime.GOOS {
+	case "linux":
+		err = exec.Command("xdg-open", url).Start()
+	case "windows":
+		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", "http://localhost:4001/").Start()
+	case "darwin":
+		err = exec.Command("open", url).Start()
+	default:
+		err = fmt.Errorf("Cannot open URL %s on this platform", url)
+	}
+	return err
 }
 
 // FromFile retrieves a token from a local file.
