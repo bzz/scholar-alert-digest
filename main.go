@@ -46,18 +46,19 @@ import (
 const (
 	labelName = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
 
-	usageMessage = `usage: go run [-labels] [-html] [-mark] [-read] [-l <your-gmail-label>]
+	usageMessage = `usage: go run [-labels | -subj] [-html | -json] [-mark] [-read] [-l <your-gmail-label>] [-n]
 
 Polls Gmail API for unread Google Scholar alert messaged under a given label,
 aggregates by paper title and prints a list of paper URLs in Markdown format.
 
 The -l flag sets the Gmail label to look for (overriden by 'SAD_LABEL' env variable).
-The -labels flag will only list all available labels for the current account.
+The -n flag sets the number of concurent requests to Gmail API.
+The -labels flag will only print all available labels for the current account.
+The -subj flag will only include email subjects in the report. Usefull for " | uniq -c | sort -dr".
 The -html flag will produce ouput report in HTML format.
 The -json flag will produce output in JSONL format, one paper object per line.
 The -mark flag will mark all the aggregated emails as read in Gmail.
 The -read flag will include a new section in the report, aggregating all read emails.
-The -subj flag will only include email subjects in the report. Usefull for piping "uniq -c | sort -dr".
 `
 
 	newMdTemplText = `# Google Scholar Alert Digest
@@ -113,6 +114,7 @@ var (
 	markRead   = flag.Bool("mark", false, "marks all aggregated emails as read")
 	read       = flag.Bool("read", false, "include read emails to a separate section of the report")
 	onlySubj   = flag.Bool("subj", false, "aggregate only email subjects")
+	concurReq  = flag.Int("n", 10, "number of concurent Gmail API requests")
 )
 
 func usage() {
@@ -147,7 +149,7 @@ func main() {
 			query = strings.TrimSuffix(query, " is:unread")
 		}
 
-		msgs, err := gmailutils.Fetch(context.TODO(), srv, user, query)
+		msgs, err := gmailutils.FetchConcurent(context.Background(), srv, user, query, *concurReq)
 		if err != nil {
 			log.Fatalf("Failed to fetch messages from Gmail: %v", err)
 		}
@@ -157,7 +159,7 @@ func main() {
 	}
 
 	// TODO(bzz): FetchAsync returning chan *gmail.Message
-	urMsgs, err := gmailutils.Fetch(context.TODO(), srv, user, fmt.Sprintf("label:%s is:unread", *gmailLabel))
+	urMsgs, err := gmailutils.FetchConcurent(context.Background(), srv, user, fmt.Sprintf("label:%s is:unread", *gmailLabel), *concurReq)
 	if err != nil {
 		log.Fatalf("Failed to fetch messages from Gmail: %v", err)
 	}
@@ -166,7 +168,7 @@ func main() {
 	// TODO(bzz): define a new type aggPapers
 	var rTitles map[papers.Paper]int
 	if *read {
-		rMsgs, err := gmailutils.Fetch(context.TODO(), srv, user, fmt.Sprintf("label:%s is:read", *gmailLabel))
+		rMsgs, err := gmailutils.FetchConcurent(context.Background(), srv, user, fmt.Sprintf("label:%s is:read", *gmailLabel), *concurReq)
 		if err != nil {
 			log.Fatal("Failed to fetch messages from Gmail")
 		}
