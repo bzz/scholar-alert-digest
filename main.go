@@ -25,6 +25,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -53,6 +54,7 @@ aggregates by paper title and prints a list of paper URLs in Markdown format.
 The -l flag sets the Gmail label to look for (overriden by 'SAD_LABEL' env variable).
 The -labels flag will only list all available labels for the current account.
 The -html flag will produce ouput report in HTML format.
+The -json flag will produce output in JSONL format, one paper object per line.
 The -mark flag will mark all the aggregated emails as read in Gmail.
 The -read flag will include a new section in the report, aggregating all read emails.
 The -subj flag will only include email subjects in the report. Usefull for piping "uniq -c | sort -dr".
@@ -105,11 +107,12 @@ var (
 
 	gmailLabel = flag.String("l", labelName, "name of the Gmail label")
 	listLabels = flag.Bool("labels", false, "list all Gmail labels")
-	// TODO(bzz): a format flag \w validated md/html options would be better
-	ouputHTML = flag.Bool("html", false, "output report in HTML (instead of default Markdown)")
-	markRead  = flag.Bool("mark", false, "marks all aggregated emails as read")
-	read      = flag.Bool("read", false, "include read emails to a separate section of the report")
-	onlySubj  = flag.Bool("subj", false, "aggregate only email subjects")
+	// TODO(bzz): a format flag \w validated md/html/json options would be better
+	outputHTML = flag.Bool("html", false, "output report in HTML (instead of default Markdown)")
+	outputJSON = flag.Bool("json", false, "output report data in JSON")
+	markRead   = flag.Bool("mark", false, "marks all aggregated emails as read")
+	read       = flag.Bool("read", false, "include read emails to a separate section of the report")
+	onlySubj   = flag.Bool("subj", false, "aggregate only email subjects")
 )
 
 func usage() {
@@ -138,9 +141,15 @@ func main() {
 	}
 
 	if *onlySubj {
-		msgs, err := gmailutils.Fetch(context.TODO(), srv, user, fmt.Sprintf("label:%s", *gmailLabel))
+		log.Print("only extracting the subjects")
+		query := fmt.Sprintf("label:%s is:unread", *gmailLabel)
+		if *read {
+			query = strings.TrimSuffix(query, " is:unread")
+		}
+
+		msgs, err := gmailutils.Fetch(context.TODO(), srv, user, query)
 		if err != nil {
-			log.Fatal("Failed to fetch messages from Gmail: %v", err)
+			log.Fatalf("Failed to fetch messages from Gmail: %v", err)
 		}
 
 		printSubjects(msgs)
@@ -150,10 +159,11 @@ func main() {
 	// TODO(bzz): FetchAsync returning chan *gmail.Message
 	urMsgs, err := gmailutils.Fetch(context.TODO(), srv, user, fmt.Sprintf("label:%s is:unread", *gmailLabel))
 	if err != nil {
-		log.Fatal("Failed to fetch messages from Gmail: %v", err)
+		log.Fatalf("Failed to fetch messages from Gmail: %v", err)
 	}
 	errCnt, urTitlesCnt, urTitles := papers.ExtractPapersFromMsgs(urMsgs)
 
+	// TODO(bzz): define a new type aggPapers
 	var rTitles map[papers.Paper]int
 	if *read {
 		rMsgs, err := gmailutils.Fetch(context.TODO(), srv, user, fmt.Sprintf("label:%s is:read", *gmailLabel))
@@ -163,7 +173,9 @@ func main() {
 		_, _, rTitles = papers.ExtractPapersFromMsgs(rMsgs)
 	}
 
-	if *ouputHTML {
+	if *outputJSON {
+		generateAndPrintJSON(urTitles, rTitles)
+	} else if *outputHTML {
 		generateAndPrintHTML(len(urMsgs), urTitlesCnt, urTitles, rTitles)
 	} else {
 		generateAndPrintMarkdown(len(urMsgs), urTitlesCnt, urTitles, rTitles)
@@ -182,7 +194,6 @@ func main() {
 }
 
 func printSubjects(msgs []*gmail.Message) {
-	log.Printf("will only extract subjects from those %d messages", len(msgs))
 	var subjs []string
 	for _, m := range msgs {
 		subj := gmailutils.Subject(m.Payload)
@@ -214,6 +225,17 @@ func splitOnDash(str string) ([]string, string) {
 	}
 	sep := fmt.Sprintf(" %s ", dash)
 	return strings.Split(str, sep), sep
+}
+
+func generateAndPrintJSON(urTitles, rTitles map[papers.Paper]int) {
+	log.Print("formatting gmail messages in JSON")
+	encoder := json.NewEncoder(os.Stdout)
+	for _, p := range papers.SortedKeys(urTitles) {
+		encoder.Encode(p)
+	}
+	for _, p := range papers.SortedKeys(rTitles) {
+		encoder.Encode(p)
+	}
 }
 
 func generateAndPrintHTML(msgsCnt, titlesCnt int, unread, read map[papers.Paper]int) {

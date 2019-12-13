@@ -151,8 +151,8 @@ func QueryMessages(ctx context.Context, srv *gmail.Service, user, query string) 
 			messages = append(messages, msg)
 		}
 
-		bar.Finish()                                                       // defering it collides with next log
-		log.Printf("page %d: %d messaged fetched", page, len(mr.Messages)) // TODO(bzz): debug level only
+		bar.Finish() // defering it collides with next log
+		// log.Printf("page %d: %d messaged fetched", page, len(mr.Messages)) // TODO(bzz): debug level only
 		page++
 		return nil
 	})
