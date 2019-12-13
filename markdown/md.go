@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/bzz/scholar-alert-digest/papers"
+	"gitlab.com/golang-commonmark/markdown"
 )
 
 // GenerateMd generates Markdown report for unread emails and the read ones, if any.
@@ -49,5 +50,36 @@ func oldMdReport(out io.Writer, tmplText string, agrPapers map[papers.Paper]int)
 	err := tmpl.Execute(out, agrPapers)
 	if err != nil {
 		log.Fatalf("template %q execution failed: %s", tmplText, err)
+	}
+}
+
+// Render renderes given markdown text as HTML \w links opened in a new tab.
+func Render(src []byte) string {
+	md := markdown.New(markdown.XHTMLOutput(true), markdown.HTML(true))
+
+	// either parse & change link targes, or implement a new markdown.Renderer
+	tokens := md.Parse(src)
+	addLinksTarget(tokens)
+	return md.RenderTokensToString(tokens)
+}
+
+// addLinksTarget traverses the parse tree, finds links and forces them to be opened in a new tab.
+func addLinksTarget(tokens []markdown.Token) {
+	for idx, tok := range tokens {
+		if iTok, ok := tok.(*markdown.Inline); ok {
+			for i := range iTok.Children {
+				addLinkTarget(iTok.Children, i)
+			}
+		} else {
+			addLinkTarget(tokens, idx)
+		}
+	}
+}
+
+func addLinkTarget(tokens []markdown.Token, idx int) {
+	tok := tokens[idx]
+	switch tok.(type) {
+	case *markdown.LinkOpen:
+		tok.(*markdown.LinkOpen).Target = "_blank"
 	}
 }

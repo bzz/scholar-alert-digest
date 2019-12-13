@@ -15,6 +15,7 @@
  */
 
 // Package token provides utilities for caching Gmail auth token.
+// TOOD(bzz) rename to auth?
 package token
 
 import (

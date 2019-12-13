@@ -39,7 +39,6 @@ import (
 	mrkdwn "github.com/bzz/scholar-alert-digest/markdown"
 	"github.com/bzz/scholar-alert-digest/papers"
 
-	"gitlab.com/golang-commonmark/markdown"
 	"google.golang.org/api/gmail/v1"
 )
 
@@ -244,8 +243,7 @@ func generateAndPrintHTML(msgsCnt, titlesCnt int, unread, read map[papers.Paper]
 	var mdBuf bytes.Buffer
 	mrkdwn.GenerateMd(&mdBuf, newMdTemplText, oldMdTemplText, msgsCnt, titlesCnt, unread, read)
 
-	md := markdown.New(markdown.XHTMLOutput(true), markdown.HTML(true))
-	fmt.Printf(htmlTemplText, md.RenderToString([]byte(mdBuf.String())))
+	fmt.Printf(htmlTemplText, mrkdwn.Render(mdBuf.Bytes()))
 }
 
 func generateAndPrintMarkdown(msgsCnt, titlesCnt int, unread, read map[papers.Paper]int) {
