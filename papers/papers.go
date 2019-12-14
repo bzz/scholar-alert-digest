@@ -34,6 +34,14 @@ type Abstract struct {
 	FirstLine, Rest string
 }
 
+// AggPapers represents an aggregated collection of Papers.
+type AggPapers map[Paper]int
+
+// Stats is a number of counters \w stats on paper extraction from gmail messages.
+type Stats struct {
+	Msgs, Titles, Errs int
+}
+
 // Helpers for a Map, sorted by keys.
 // TODO(bzz): move to map.go after `go run main.go` is replaced by ./cmd/report
 type sortedMap struct {
@@ -62,26 +70,25 @@ func SortedKeys(m map[Paper]int) []Paper {
 
 // ExtractPapersFromMsgs parses the messages payloads and creates Papers.
 // TODO(bzz): rename to extract+aggregate
-func ExtractPapersFromMsgs(messages []*gmail.Message) (int, int, map[Paper]int) {
-	errCount := 0
-	titlesCount := 0
-	uniqTitles := map[Paper]int{}
+func ExtractPapersFromMsgs(msgs []*gmail.Message) (*Stats, AggPapers) {
+	st := &Stats{Msgs: len(msgs)}
+	uniqTitles := AggPapers{}
 
-	for _, m := range messages {
+	for _, m := range msgs {
 		papers, err := extractPapersFromMsg(m)
 		if err != nil {
-			errCount++
+			st.Errs++
 			continue
 		}
 
 		// aggregate
-		titlesCount += len(papers)
-		for _, paper := range papers { // map title to uniqTitles
+		st.Titles += len(papers)
+		for _, paper := range papers {
 			uniqTitles[paper]++
 		}
 	}
 
-	return errCount, titlesCount, uniqTitles
+	return st, uniqTitles
 }
 
 func extractPapersFromMsg(m *gmail.Message) ([]Paper, error) {
