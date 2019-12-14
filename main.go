@@ -19,7 +19,7 @@
 // It does so by:
 //  - fetching messages under a certian Gmail label
 //  - transforming and aggregateing them into map[paper]int
-//  - rendering a text/template with it, in Markdown or HTML
+//  - rendering a text/template with it, in Markdown/HTML/JSON
 package main
 
 import (
@@ -45,7 +45,7 @@ import (
 const (
 	labelName = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
 
-	usageMessage = `usage: go run [-labels | -subj] [-html | -json] [-mark] [-read] [-l <your-gmail-label>] [-n]
+	usageMessage = `usage: go run [-labels | -subj] [-html | -html-xs | -json] [-mark] [-read] [-l <your-gmail-label>] [-n]
 
 Polls Gmail API for unread Google Scholar alert messaged under a given label,
 aggregates by paper title and prints a list of paper URLs in Markdown format.
@@ -55,6 +55,7 @@ The -n flag sets the number of concurent requests to Gmail API.
 The -labels flag will only print all available labels for the current account.
 The -subj flag will only include email subjects in the report. Usefull for " | uniq -c | sort -dr".
 The -html flag will produce ouput report in HTML format.
+The -html-xs flag will produce ouput report compact HTML format, usefull >100 papers.
 The -json flag will produce output in JSONL format, one paper object per line.
 The -mark flag will mark all the aggregated emails as read in Gmail.
 The -read flag will include a new section in the report, aggregating all read emails.
@@ -69,14 +70,15 @@ The -read flag will include a new section in the report, aggregating all read em
 
 ## New papers
 {{ range $paper := sortedKeys .Papers }}
- - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
-   {{- if .Abstract.FirstLine }}
-   <details>
-     <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.Rest}}
+ - <details onclick="document.activeElement.blur();">
+     <summary><a href="{{ .URL }}" target="_blank">{{ .Title }}</a> {{index $.Papers .}}</summary>
+     {{ if .Abstract.FirstLine -}}
+       <div class="wide">{{.Abstract.FirstLine}} {{.Abstract.Rest}}</div>
+     {{ end }}
    </details>
-   {{ end }}
 {{ end }}
 `
+	// TODO(bzz): add configurable template for individual li
 
 	oldMdTemplText = `## Old papers
 
@@ -96,9 +98,16 @@ The -read flag will include a new section in the report, aggregating all read em
 
 	htmlTemplText = `<!DOCTYPE html>
 <html lang="en">
-  <head><meta charset="UTF-8"></head>
+  <head>
+    <meta charset="UTF-8">
+	<style>%s</style>
+  </head>
   <body>%s</body>
 </html>
+`
+	htmlStyleCompat = `
+ul { list-style-type: none; margin: 0; padding: 0 0 0 20px; }
+.wide { max-width:60%; margin-left: 1em; padding: 0.5em 0; }
 `
 )
 
@@ -109,6 +118,7 @@ var (
 	listLabels = flag.Bool("labels", false, "list all Gmail labels")
 	// TODO(bzz): a format flag \w validated md/html/json options would be better
 	outputHTML = flag.Bool("html", false, "output report in HTML (instead of default Markdown)")
+	outHTMLxs  = flag.Bool("html-xs", false, "output report in compact HTML (for 100+ papers)")
 	outputJSON = flag.Bool("json", false, "output report data in JSON")
 	markRead   = flag.Bool("mark", false, "marks all aggregated emails as read")
 	read       = flag.Bool("read", false, "include read emails to a separate section of the report")
@@ -178,6 +188,8 @@ func main() {
 		generateAndPrintJSON(urTitles, rTitles)
 	} else if *outputHTML {
 		generateAndPrintHTML(len(urMsgs), urTitlesCnt, urTitles, rTitles)
+	} else if *outHTMLxs {
+		generateAndPrintHTMLxs(len(urMsgs), urTitlesCnt, urTitles, rTitles)
 	} else {
 		generateAndPrintMarkdown(len(urMsgs), urTitlesCnt, urTitles, rTitles)
 	}
@@ -240,10 +252,18 @@ func generateAndPrintJSON(urTitles, rTitles map[papers.Paper]int) {
 }
 
 func generateAndPrintHTML(msgsCnt, titlesCnt int, unread, read map[papers.Paper]int) {
+	genPrintHTML(msgsCnt, titlesCnt, unread, read, "")
+}
+
+func generateAndPrintHTMLxs(msgsCnt, titlesCnt int, unread, read map[papers.Paper]int) {
+	genPrintHTML(msgsCnt, titlesCnt, unread, read, htmlStyleCompat)
+}
+
+func genPrintHTML(msgsCnt, titlesCnt int, unread, read map[papers.Paper]int, style string) {
 	var mdBuf bytes.Buffer
 	mrkdwn.GenerateMd(&mdBuf, newMdTemplText, oldMdTemplText, msgsCnt, titlesCnt, unread, read)
 
-	fmt.Printf(htmlTemplText, mrkdwn.Render(mdBuf.Bytes()))
+	fmt.Printf(htmlTemplText, style, mrkdwn.Render(mdBuf.Bytes()))
 }
 
 func generateAndPrintMarkdown(msgsCnt, titlesCnt int, unread, read map[papers.Paper]int) {
