@@ -182,6 +182,24 @@ func searchAndFetchConcurent(ctx context.Context, srv *gmail.Service, user, quer
 	return msgs, nil
 }
 
+// ModifyMsgsDelLabel batch-deletes a label from all the given messages.
+// TODO(bzz): move user to a const in this package
+func ModifyMsgsDelLabel(srv *gmail.Service, user string, messages []*gmail.Message, label string) {
+	var msgIds []string
+	for _, msg := range messages {
+		msgIds = append(msgIds, msg.Id)
+	}
+
+	err := srv.Users.Messages.BatchModify(user, &gmail.BatchModifyMessagesRequest{
+		Ids:            msgIds,
+		RemoveLabelIds: []string{label},
+	}).Do()
+	if err != nil {
+		log.Printf("failed to batch-delete label %s from %d messages: %s",
+			label, len(messages), err)
+	}
+}
+
 // FormatAsID formats human-readable lable as ID, consumable by Gmail API.
 func FormatAsID(label string) string {
 	// TODO(bzz): test with labels in on Gmail in Chinese/emoji

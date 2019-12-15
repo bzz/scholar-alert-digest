@@ -19,13 +19,11 @@
 // It does so by:
 //  - fetching messages under a certian Gmail label
 //  - transforming and aggregateing them into map[paper]int
-//  - rendering a text/template with it, in Markdown or HTML
+//  - rendering a text/template with it, in Markdown/HTML/JSON
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -36,8 +34,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
-	mrkdwn "github.com/bzz/scholar-alert-digest/markdown"
 	"github.com/bzz/scholar-alert-digest/papers"
+	"github.com/bzz/scholar-alert-digest/templates"
 
 	"google.golang.org/api/gmail/v1"
 )
@@ -45,7 +43,7 @@ import (
 const (
 	labelName = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
 
-	usageMessage = `usage: go run [-labels | -subj] [-html | -json] [-mark] [-read] [-l <your-gmail-label>] [-n]
+	usageMessage = `usage: go run [-labels | -subj] [-html | -json] [-compact] [-mark] [-read] [-l <your-gmail-label>] [-n]
 
 Polls Gmail API for unread Google Scholar alert messaged under a given label,
 aggregates by paper title and prints a list of paper URLs in Markdown format.
@@ -56,60 +54,21 @@ The -labels flag will only print all available labels for the current account.
 The -subj flag will only include email subjects in the report. Usefull for " | uniq -c | sort -dr".
 The -html flag will produce ouput report in HTML format.
 The -json flag will produce output in JSONL format, one paper object per line.
+The -compact flag will produce ouput report in compact format, usefull >100 papers.
 The -mark flag will mark all the aggregated emails as read in Gmail.
 The -read flag will include a new section in the report, aggregating all read emails.
-`
-
-	newMdTemplText = `# Google Scholar Alert Digest
-
-**Date**: {{.Date}}
-**Unread emails**: {{.UnreadEmails}}
-**Paper titles**: {{.TotalPapers}}
-**Uniq paper titles**: {{.UniqPapers}}
-
-## New papers
-{{ range $paper := sortedKeys .Papers }}
- - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
-   {{- if .Abstract.FirstLine }}
-   <details>
-     <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.Rest}}
-   </details>
-   {{ end }}
-{{ end }}
-`
-
-	oldMdTemplText = `## Old papers
-
-<details>
-  <summary>Archive</summary>
-
-{{ range $paper := sortedKeys . }}
-  - [{{ .Title }}]({{ .URL }})
-    {{- if .Abstract.FirstLine }}
-    <details>
-      <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.Rest}}
-    </details>
-    {{ end }}
-{{ end }}
-</details>
-`
-
-	htmlTemplText = `<!DOCTYPE html>
-<html lang="en">
-  <head><meta charset="UTF-8"></head>
-  <body>%s</body>
-</html>
 `
 )
 
 var (
-	user = "me"
+	user = "me" // TODO(bzz): move to const in gmailutils
 
 	gmailLabel = flag.String("l", labelName, "name of the Gmail label")
 	listLabels = flag.Bool("labels", false, "list all Gmail labels")
 	// TODO(bzz): a format flag \w validated md/html/json options would be better
 	outputHTML = flag.Bool("html", false, "output report in HTML (instead of default Markdown)")
 	outputJSON = flag.Bool("json", false, "output report data in JSON")
+	compact    = flag.Bool("compact", false, "output report in compact format (>100 papers)")
 	markRead   = flag.Bool("mark", false, "marks all aggregated emails as read")
 	read       = flag.Bool("read", false, "include read emails to a separate section of the report")
 	onlySubj   = flag.Bool("subj", false, "aggregate only email subjects")
@@ -157,40 +116,50 @@ func main() {
 		os.Exit(0)
 	}
 
-	// TODO(bzz): FetchAsync returning chan *gmail.Message
+	// fetch messages, extract papers, aggregated by title
+	// TODO(bzz): FetchAsync returning chan *gmail.Message?
 	urMsgs, err := gmailutils.FetchConcurent(context.Background(), srv, user, fmt.Sprintf("label:%s is:unread", *gmailLabel), *concurReq)
 	if err != nil {
 		log.Fatalf("Failed to fetch messages from Gmail: %v", err)
 	}
-	errCnt, urTitlesCnt, urTitles := papers.ExtractPapersFromMsgs(urMsgs)
+	unreadStats, unreadPapers := papers.ExtractPapersFromMsgs(urMsgs)
 
-	// TODO(bzz): define a new type aggPapers
-	var rTitles map[papers.Paper]int
+	readStats := &papers.Stats{}
+	var readPapers papers.AggPapers
 	if *read {
 		rMsgs, err := gmailutils.FetchConcurent(context.Background(), srv, user, fmt.Sprintf("label:%s is:read", *gmailLabel), *concurReq)
 		if err != nil {
 			log.Fatal("Failed to fetch messages from Gmail")
 		}
-		_, _, rTitles = papers.ExtractPapersFromMsgs(rMsgs)
+		readStats, readPapers = papers.ExtractPapersFromMsgs(rMsgs)
+	}
+
+	// render papers
+	var r templates.Renderer
+	template, style := templates.MdTemplText, ""
+	if *compact {
+		template, style = templates.CompactMdTemplText, templates.CompatStyle
 	}
 
 	if *outputJSON {
-		generateAndPrintJSON(urTitles, rTitles)
+		r = templates.NewJSONRenderer()
 	} else if *outputHTML {
-		generateAndPrintHTML(len(urMsgs), urTitlesCnt, urTitles, rTitles)
+		r = templates.NewHTMLRenderer(template, style)
 	} else {
-		generateAndPrintMarkdown(len(urMsgs), urTitlesCnt, urTitles, rTitles)
+		r = templates.NewMarkdownRenderer(template, templates.ReadMdTemplText)
 	}
+	r.Render(os.Stdout, unreadStats, unreadPapers, readPapers)
 
 	if *markRead {
 		// TODO(bzz): add a state
 		//  use existing report from FS \w a checkbox state set by the user
 		//  only mark email as "read" iff all the links are checked off
-		markGmailMsgsUnread(srv, user, urMsgs)
+		gmailutils.ModifyMsgsDelLabel(srv, user, urMsgs, "UNREAD")
 	}
 
-	if errCnt != 0 {
-		log.Printf("Errors: %d\n", errCnt)
+	totalErrCnt := unreadStats.Errs + readStats.Errs
+	if totalErrCnt != 0 {
+		log.Printf("Errors: %d\n", totalErrCnt)
 	}
 }
 
@@ -226,45 +195,4 @@ func splitOnDash(str string) ([]string, string) {
 	}
 	sep := fmt.Sprintf(" %s ", dash)
 	return strings.Split(str, sep), sep
-}
-
-func generateAndPrintJSON(urTitles, rTitles map[papers.Paper]int) {
-	log.Print("formatting gmail messages in JSON")
-	encoder := json.NewEncoder(os.Stdout)
-	for _, p := range papers.SortedKeys(urTitles) {
-		encoder.Encode(p)
-	}
-	for _, p := range papers.SortedKeys(rTitles) {
-		encoder.Encode(p)
-	}
-}
-
-func generateAndPrintHTML(msgsCnt, titlesCnt int, unread, read map[papers.Paper]int) {
-	var mdBuf bytes.Buffer
-	mrkdwn.GenerateMd(&mdBuf, newMdTemplText, oldMdTemplText, msgsCnt, titlesCnt, unread, read)
-
-	fmt.Printf(htmlTemplText, mrkdwn.Render(mdBuf.Bytes()))
-}
-
-func generateAndPrintMarkdown(msgsCnt, titlesCnt int, unread, read map[papers.Paper]int) {
-	mrkdwn.GenerateMd(os.Stdout, newMdTemplText, oldMdTemplText, msgsCnt, titlesCnt, unread, read)
-}
-
-func markGmailMsgsUnread(srv *gmail.Service, user string, messages []*gmail.Message) {
-	const label = "UNREAD"
-	var msgIds []string
-	for _, msg := range messages {
-		msgIds = append(msgIds, msg.Id)
-	}
-
-	err := srv.Users.Messages.BatchModify(user, &gmail.BatchModifyMessagesRequest{
-		Ids:            msgIds,
-		RemoveLabelIds: []string{label},
-	}).Do()
-	if err != nil {
-		log.Printf("failed to batch-delete label %s from %d messages: %s",
-			label, len(messages), err)
-	}
-	// TODO(bzz): move to
-	//  gmailutils.ModifyMessagesDelLabel(srv, user, messages, "UNREAD")
 }
