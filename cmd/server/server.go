@@ -75,6 +75,7 @@ var ( // configuration
 
 var ( // CLI
 	compact = flag.Bool("compact", false, "output report in compact format (>100 papers)")
+	// TODO(bzz): add -read support + equivalent per-user config option (cookies)
 )
 
 var htmlRn templates.Renderer
