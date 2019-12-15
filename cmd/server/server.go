@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"context"
+	"flag"
 	"fmt"
 	"html/template"
 	"log"
@@ -12,8 +12,8 @@ import (
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 	"github.com/bzz/scholar-alert-digest/gmailutils/token"
-	mrkdwn "github.com/bzz/scholar-alert-digest/markdown"
 	"github.com/bzz/scholar-alert-digest/papers"
+	"github.com/bzz/scholar-alert-digest/templates"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -23,19 +23,9 @@ import (
 const user = "me"
 
 var ( // templates
-	layout = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>{{ template "title" }}</title>
-  <link rel="icon" href="http://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/apple/232/page-with-curl_1f4c3.png">
-</head>
-<body>{{ template "body" . }}</body>
-</html>
-`
 	chooseLabelsForm = `
-{{ define "title"}}Chose a label{{ end }}
+{{ define "title" }}Chose a label{{ end }}
+{{ define "style" }}{{ end }}
 {{ define "body" }}
 <p>Please, chosse a Gmail label to aggregate:</p>
 <form action="/labels" method="POST">
@@ -83,7 +73,21 @@ var ( // configuration
 	}
 )
 
+var ( // CLI
+	compact = flag.Bool("compact", false, "output report in compact format (>100 papers)")
+)
+
+var htmlRn templates.Renderer
+
 func main() {
+	flag.Parse()
+
+	templateText, style := templates.MdTemplText, ""
+	if *compact {
+		templateText, style = templates.CompactMdTemplText, templates.CompatStyle
+	}
+	htmlRn = templates.NewHTMLRenderer(templateText, style)
+
 	// TODO(bzz):
 	//  - configure the log level, to include requests in debug
 	//  - add default req timeouts + throttling, to prevent abuse
@@ -129,36 +133,13 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// aggregate
-	errCnt, urTitlesCnt, urTitles := papers.ExtractPapersFromMsgs(urMsgs)
-	if errCnt != 0 {
-		log.Printf("%d errors found, extracting the papers", errCnt)
+	stats, urTitles := papers.ExtractPapersFromMsgs(urMsgs)
+	if stats.Errs != 0 {
+		log.Printf("%d errors found, extracting the papers", stats.Errs)
 	}
 
-	// render: generate Md, render to HTML
-	var mdBuf bytes.Buffer
-	mrkdwn.GenerateMd(&mdBuf, newMdTemplText, "", len(urMsgs), urTitlesCnt, urTitles, nil)
-
-	htmlTemplText := `<!DOCTYPE html>
-	<html lang="en">
-	  <head>
-		<meta charset="UTF-8">
-		<link rel="icon" href="http://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/apple/232/page-with-curl_1f4c3.png">
-		<title>Scholar Alert Digest</title>
-	  </head>
-	  <body>%s</body>
-	</html>
-	`
-	w.Write([]byte(fmt.Sprintf(htmlTemplText, mrkdwn.Render(mdBuf.Bytes()))))
-
-	// TODO(bzz): use html/tmeplate instead
-	// tmpl := template.Must( // render combination of the nested templates
-	// 	template.Must(
-	// 		layoutTmpl.Copy()).
-	// 		Parse(papersListPage))
-	// err = tmpl.Execute(w, papers)
-	// if err != nil {
-	// 	log.Printf("Failed to render a papersList template: %v", err)
-	// }
+	// render
+	htmlRn.Render(w, stats, urTitles, nil)
 }
 
 func handleLabels(w http.ResponseWriter, r *http.Request) {
@@ -194,10 +175,9 @@ func fetchLabelsAndServeForm(w http.ResponseWriter, r *http.Request, tok *oauth2
 	}
 	sort.Strings(labels)
 
-	tmpl := template.Must( // render combination of the nested templates
-		template.Must(
-			template.New("choose-label").Parse(layout)).
-			Parse(chooseLabelsForm))
+	// render combination of the nested templates
+	tmpl := template.Must(templates.RootLayout.Clone())
+	tmpl = template.Must(tmpl.Parse(chooseLabelsForm))
 	err = tmpl.Execute(w, labels)
 	if err != nil {
 		log.Printf("Failed to render a template: %v", err)

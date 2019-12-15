@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	rootLayout = template.Must(template.New("layout").Parse(`
+	RootLayout = template.Must(template.New("layout").Parse(`
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -165,7 +165,7 @@ func (r *MarkdownRenderer) oldMdReport(out io.Writer, agrPapers papers.AggPapers
 	}
 }
 
-// HTMLRenderer outputs HTML.
+// HTMLRenderer outputs HTML from template in Markdown.
 type HTMLRenderer struct {
 	Renderer
 	layout *template.Template
@@ -173,7 +173,7 @@ type HTMLRenderer struct {
 }
 
 func NewHTMLRenderer(templateText, style string) Renderer {
-	return &HTMLRenderer{NewMarkdownRenderer(templateText, ReadMdTemplText), rootLayout, style}
+	return &HTMLRenderer{NewMarkdownRenderer(templateText, ReadMdTemplText), RootLayout, style}
 }
 
 func (r *HTMLRenderer) Render(out io.Writer, st *papers.Stats, unread, read papers.AggPapers) {
@@ -189,6 +189,9 @@ func (r *HTMLRenderer) Render(out io.Writer, st *papers.Stats, unread, read pape
 	style := fmt.Sprintf(`{{ define "style" }}%s{{ end }}`, r.style)
 	body := fmt.Sprintf(`{{ define "body" }}%s{{ end }}`, htmlBuf.String())
 
+	// TODO(bzz): move tmpl construction out of .Render(), so there is either:
+	// - only one .Clone() + .Parese() for dynamic "body" template, generated from MD
+	// - or change "body" template to recive HTML generated from MD as a data (better)
 	tmpl := template.Must(r.layout.Clone())
 	tmpl = template.Must(tmpl.Parse(title))
 	tmpl = template.Must(tmpl.Parse(style))
