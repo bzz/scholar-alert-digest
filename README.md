@@ -69,6 +69,11 @@ To only aggregate the email subjects do
 go run main.go -subj | uniq -c | sort -dr
 ```
 
+There is an optional more compact report template that may be useful for a big number of papers:
+```
+go run main.go -compact
+```
+
 # Web server
 Web UI that exposes basic HTML report generation to multiple concurrent users.
 
@@ -91,12 +96,12 @@ You do not need to pass the label name on the startup as it can be chosen at
 runtime at [/labels](http://localhost:8080/labels).
 
 ## Run
-The basic report generation is exposed though a web server that can be started with
+The report generation is exposed though a web server that can be started with
 ```
-go run ./cmd/server
+go run ./cmd/server [-compact]
 ```
 
-will start a server on http://localhost:8080
+to spin up a server on http://localhost:8080
 
 Start by visiting http://localhost:8080/login to get the user OAuth access token.
 Visit http://localhost:8080/labels to chose your label name.
