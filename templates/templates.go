@@ -61,7 +61,7 @@ var (
 {{ range $paper := sortedKeys .Papers }}
  - <details onclick="document.activeElement.blur();">
 	 <summary><a href="{{ .URL }}">{{ .Title }}</a> {{index $.Papers .}}</summary>
-	 <div class="wide"><i class="auth">{{ .Author }}</i>
+	 <div class="wide"><i>{{ .Author }}</i>
      {{ if .Abstract.FirstLine -}}
        <div>{{.Abstract.FirstLine}} {{.Abstract.Rest}}</div>
 	 {{ end }}
@@ -91,7 +91,6 @@ var (
 ul { list-style-type: none; margin: 0; padding: 0 0 0 20px; }
 #archive>ul {list-style-type: circle; }
 .wide { max-width:60%; margin-left: 1em; padding: 0.2em 0 0.5em 0; }
-.auth { margin-bottom: 2px; display: inline-block; }
 `
 )
 

@@ -75,12 +75,12 @@ func SortedKeys(m map[Paper]int) []Paper {
 
 // ExtractPapersFromMsgs parses the messages payloads and creates Papers.
 // TODO(bzz): rename to extract+aggregate
-func ExtractPapersFromMsgs(msgs []*gmail.Message) (*Stats, AggPapers) {
+func ExtractPapersFromMsgs(msgs []*gmail.Message, inclAuthors bool) (*Stats, AggPapers) {
 	st := &Stats{Msgs: len(msgs)}
 	uniqTitles := AggPapers{}
 
 	for _, m := range msgs {
-		papers, err := extractPapersFromMsg(m)
+		papers, err := extractPapersFromMsg(m, inclAuthors)
 		if err != nil {
 			st.Errs++
 			continue
@@ -97,7 +97,7 @@ func ExtractPapersFromMsgs(msgs []*gmail.Message) (*Stats, AggPapers) {
 	return st, uniqTitles
 }
 
-func extractPapersFromMsg(m *gmail.Message) ([]Paper, error) {
+func extractPapersFromMsg(m *gmail.Message, inclAuthors bool) ([]Paper, error) {
 	subj := gmailutils.Subject(m.Payload)
 
 	body, err := gmailutils.MessageTextBody(m)
@@ -146,10 +146,13 @@ func extractPapersFromMsg(m *gmail.Message) ([]Paper, error) {
 	}
 
 	var papers []Paper
+	var author string
 	for i, aTitle := range titles {
 		title := strings.TrimSpace(htmlquery.InnerText(aTitle))
-		author := extractPaperAuthor(htmlquery.InnerText(auths[i]))
 		abstract := strings.TrimSpace(htmlquery.InnerText(abss[i]))
+		if inclAuthors {
+			author = extractPaperAuthor(htmlquery.InnerText(auths[i]))
+		}
 
 		url, err := extractPaperURL(htmlquery.InnerText(urls[i]))
 		if err != nil {
@@ -167,7 +170,7 @@ func extractPapersFromMsg(m *gmail.Message) ([]Paper, error) {
 func extractPaperAuthor(pub string) string {
 	for i, r := range pub {
 		if unicode.In(r, unicode.Dash) {
-			return pub[:i]
+			return strings.TrimRightFunc(pub[:i], unicode.IsSpace)
 		}
 	}
 	return pub
