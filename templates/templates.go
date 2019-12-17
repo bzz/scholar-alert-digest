@@ -42,7 +42,9 @@ var (
  - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
    {{- if .Abstract.FirstLine }}
    <details>
-     <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.Rest}}
+     <summary>{{.Abstract.FirstLine}}</summary>
+     <div>{{.Abstract.Rest}}</div>
+     <i>{{ .Author }}</i>
    </details>
    {{ end }}
 {{ end }}
