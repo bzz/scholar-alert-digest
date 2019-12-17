@@ -21,12 +21,14 @@ import (
 var scholarURLPrefix = regexp.MustCompile(`http(s)?://scholar\.google\.\p{L}+/scholar_url\?url=`)
 
 // Paper is a map key, thus aggregation take into account all it's fields.
-//
-// TODO(bzz): think about aggregation only by the title, as suggested in
-// https://github.com/bzz/scholar-alert-digest/issues/12#issuecomment-562820924
 type Paper struct {
-	Title, URL string
-	Abstract   Abstract
+	// TODO(bzz):
+	// Freq       int
+	Title    string
+	URL      string
+	Author   string
+	Abstract Abstract
+	// Refs       []string
 }
 
 // Abstract represents a view of the parsed abstract.
@@ -35,6 +37,9 @@ type Abstract struct {
 }
 
 // AggPapers represents an aggregated collection of Papers.
+// TODO(bzz): think about aggregation only by the title, as suggested in
+// https://github.com/bzz/scholar-alert-digest/issues/12#issuecomment-562820924
+// e.g AggPapers [string]*Paper + Paper.Freq
 type AggPapers map[Paper]int
 
 // Stats is a number of counters \w stats on paper extraction from gmail messages.
@@ -82,6 +87,7 @@ func ExtractPapersFromMsgs(msgs []*gmail.Message) (*Stats, AggPapers) {
 		}
 
 		// aggregate
+		// TODO(bzz): reaplace by title aggregation (AggPapers [string]*Paper)
 		st.Titles += len(papers)
 		for _, paper := range papers {
 			uniqTitles[paper]++
@@ -125,6 +131,13 @@ func extractPapersFromMsg(m *gmail.Message) ([]Paper, error) {
 		return nil, e
 	}
 
+	// paper authors & year
+	xpAuth := "//h3/following-sibling::div[1]"
+	auths, err := htmlquery.QueryAll(doc, xpAuth)
+	if err != nil {
+		return nil, fmt.Errorf("authors: not valid XPath expression %q", xpAuth)
+	}
+
 	// paper abstract
 	xpAbs := "//h3/following-sibling::div[2]"
 	abss, err := htmlquery.QueryAll(doc, xpAbs)
@@ -135,7 +148,8 @@ func extractPapersFromMsg(m *gmail.Message) ([]Paper, error) {
 	var papers []Paper
 	for i, aTitle := range titles {
 		title := strings.TrimSpace(htmlquery.InnerText(aTitle))
-		abs := strings.TrimSpace(htmlquery.InnerText(abss[i]))
+		author := extractPaperAuthor(htmlquery.InnerText(auths[i]))
+		abstract := strings.TrimSpace(htmlquery.InnerText(abss[i]))
 
 		url, err := extractPaperURL(htmlquery.InnerText(urls[i]))
 		if err != nil {
@@ -144,10 +158,19 @@ func extractPapersFromMsg(m *gmail.Message) ([]Paper, error) {
 		}
 
 		N, lookahead := 80, 10 // max number of runes to process
-		first, rest := separateFirstLine(abs, N, lookahead)
-		papers = append(papers, Paper{title, url, Abstract{first, rest}})
+		first, rest := separateFirstLine(abstract, N, lookahead)
+		papers = append(papers, Paper{title, url, author, Abstract{first, rest}})
 	}
 	return papers, nil
+}
+
+func extractPaperAuthor(pub string) string {
+	for i, r := range pub {
+		if unicode.In(r, unicode.Dash) {
+			return pub[:i]
+		}
+	}
+	return pub
 }
 
 // extractPaperURL returns an actual paper URL from the given scholar link.
