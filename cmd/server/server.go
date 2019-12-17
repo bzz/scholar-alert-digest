@@ -134,7 +134,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// aggregate
-	stats, urTitles := papers.ExtractPapersFromMsgs(urMsgs)
+	stats, urTitles := papers.ExtractPapersFromMsgs(urMsgs, true)
 	if stats.Errs != 0 {
 		log.Printf("%d errors found, extracting the papers", stats.Errs)
 	}

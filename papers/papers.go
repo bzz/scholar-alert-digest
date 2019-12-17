@@ -167,13 +167,15 @@ func extractPapersFromMsg(m *gmail.Message, inclAuthors bool) ([]Paper, error) {
 	return papers, nil
 }
 
-func extractPaperAuthor(pub string) string {
-	for i, r := range pub {
+func extractPaperAuthor(publication string) string {
+	auth := publication
+	for i, r := range publication {
 		if unicode.In(r, unicode.Dash) {
-			return strings.TrimRightFunc(pub[:i], unicode.IsSpace)
+			auth = strings.TrimRightFunc(publication[:i], unicode.IsSpace)
+			break
 		}
 	}
-	return pub
+	return strings.Title(strings.ToLower(auth))
 }
 
 // extractPaperURL returns an actual paper URL from the given scholar link.
