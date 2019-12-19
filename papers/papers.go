@@ -22,13 +22,12 @@ var scholarURLPrefix = regexp.MustCompile(`http(s)?://scholar\.google\.\p{L}+/sc
 
 // Paper is a map key, thus aggregation take into account all it's fields.
 type Paper struct {
-	// TODO(bzz):
-	// Freq       int
 	Title    string
 	URL      string
-	Author   string
+	Author   string `json:",omitempty"`
 	Abstract Abstract
-	// Refs       []string
+	Refs     []string `json:",omitempty"`
+	Freq     int
 }
 
 // Abstract represents a view of the parsed abstract.
@@ -37,10 +36,7 @@ type Abstract struct {
 }
 
 // AggPapers represents an aggregated collection of Papers.
-// TODO(bzz): think about aggregation only by the title, as suggested in
-// https://github.com/bzz/scholar-alert-digest/issues/12#issuecomment-562820924
-// e.g AggPapers [string]*Paper + Paper.Freq
-type AggPapers map[Paper]int
+type AggPapers map[string]*Paper
 
 // Stats is a number of counters \w stats on paper extraction from gmail messages.
 type Stats struct {
@@ -48,59 +44,65 @@ type Stats struct {
 }
 
 // Helpers for a Map, sorted by keys.
-// TODO(bzz): move to map.go after `go run main.go` is replaced by ./cmd/report
 type sortedMap struct {
-	m map[Paper]int
-	s []Paper
+	m AggPapers
+	s []string
 }
 
 func (sm *sortedMap) Len() int           { return len(sm.m) }
-func (sm *sortedMap) Less(i, j int) bool { return sm.m[sm.s[i]] > sm.m[sm.s[j]] }
+func (sm *sortedMap) Less(i, j int) bool { return sm.m[sm.s[i]].Freq > sm.m[sm.s[j]].Freq }
 func (sm *sortedMap) Swap(i, j int)      { sm.s[i], sm.s[j] = sm.s[j], sm.s[i] }
 
 // SortedKeys sort the given map by key.
-// TODO(bzz): use a stable sort
-func SortedKeys(m map[Paper]int) []Paper {
+func SortedKeys(m AggPapers) []string {
 	sm := new(sortedMap)
 	sm.m = m
-	sm.s = make([]Paper, len(m))
+	sm.s = make([]string, len(m))
 	i := 0
 	for key := range m {
 		sm.s[i] = key
 		i++
 	}
+	// TODO(bzz): use a stable sort
 	sort.Sort(sm)
 	return sm.s
 }
 
-// ExtractPapersFromMsgs parses the messages payloads and creates Papers.
-// TODO(bzz): rename to extract+aggregate
-func ExtractPapersFromMsgs(msgs []*gmail.Message, inclAuthors bool) (*Stats, AggPapers) {
+// ExtractAndAggPapersFromMsgs parses mail messages and creates Papers, aggregated by title.
+func ExtractAndAggPapersFromMsgs(msgs []*gmail.Message, authors, refs bool) (*Stats, AggPapers) {
 	st := &Stats{Msgs: len(msgs)}
 	uniqTitles := AggPapers{}
 
 	for _, m := range msgs {
-		papers, err := extractPapersFromMsg(m, inclAuthors)
+		papers, err := extractPapersFromMsg(m, authors)
 		if err != nil {
 			st.Errs++
 			continue
 		}
 
 		// aggregate
-		// TODO(bzz): reaplace by title aggregation (AggPapers [string]*Paper)
 		st.Titles += len(papers)
 		for _, paper := range papers {
-			uniqTitles[paper]++
+			if !refs {
+				paper.Refs = nil
+			}
+
+			if p, ok := uniqTitles[paper.Title]; ok {
+				p.Freq += paper.Freq
+				p.Refs = append(p.Refs, paper.Refs...)
+			} else {
+				uniqTitles[paper.Title] = paper
+			}
 		}
 	}
 
 	return st, uniqTitles
 }
 
-func extractPapersFromMsg(m *gmail.Message, inclAuthors bool) ([]Paper, error) {
+func extractPapersFromMsg(m *gmail.Message, inclAuthors bool) ([]*Paper, error) {
 	subj := gmailutils.Subject(m.Payload)
 
-	body, err := gmailutils.MessageTextBody(m)
+	body, err := gmailutils.MessageTextBody(m.Payload)
 	if err != nil {
 		e := fmt.Errorf("failed to get message text for ID %s - %s", m.Id, err)
 		return nil, e
@@ -145,7 +147,7 @@ func extractPapersFromMsg(m *gmail.Message, inclAuthors bool) ([]Paper, error) {
 		return nil, fmt.Errorf("abstract: not valid XPath expression %q", xpAbs)
 	}
 
-	var papers []Paper
+	var papers []*Paper
 	var author string
 	for i, aTitle := range titles {
 		title := strings.TrimSpace(htmlquery.InnerText(aTitle))
@@ -162,7 +164,13 @@ func extractPapersFromMsg(m *gmail.Message, inclAuthors bool) ([]Paper, error) {
 
 		N, lookahead := 80, 10 // max number of runes to process
 		first, rest := separateFirstLine(abstract, N, lookahead)
-		papers = append(papers, Paper{title, url, author, Abstract{first, rest}})
+		papers = append(papers,
+			&Paper{
+				title, url, author,
+				Abstract{first, rest},
+				[]string{m.Id},
+				1,
+			})
 	}
 	return papers, nil
 }

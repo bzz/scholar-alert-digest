@@ -38,15 +38,25 @@ var (
 **Uniq paper titles**: {{.UniqPapers}}
 
 ## New papers
-{{ range $paper := sortedKeys .Papers }}
- - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
-   {{- if .Abstract.FirstLine }}
+{{ range $title := sortedKeys .Papers }}
+   {{ $paper := index $.Papers . }}
+ - [{{ $paper.Title }}]({{ $paper.URL }}) {{ template "refs" $paper }}
+   {{- if $paper.Abstract.FirstLine }}
    <details>
-     <summary>{{.Abstract.FirstLine}}</summary>
-     <div>{{.Abstract.Rest}}</div>
-     <i>{{ .Author }}</i>
+     <summary>{{ $paper.Abstract.FirstLine }}</summary>
+     <div>{{ $paper.Abstract.Rest }}</div>
+     {{if $paper.Author}}<i>{{ $paper.Author }}</i>{{end}}
    </details>
    {{ end }}
+{{ end }}
+
+{{ define "refs" -}}
+({{ if eq (len .Refs) 0}}{{ .Freq }}{{end}}
+{{- if gt (len .Refs) 1 }}{{ .Freq }}: {{ end }}
+{{- range $i, $r := .Refs}}
+	{{- if $i}}, {{end}}
+	{{- printf "[%d](https://mail.google.com/mail/#inbox/%s)" (inc $i) $r -}}
+{{- end}})
 {{ end }}
 `
 
@@ -58,7 +68,7 @@ var (
 **Uniq paper titles**: {{.UniqPapers}}
 
 ## New papers
-{{ range $paper := sortedKeys .Papers }}
+{{ range $title := sortedKeys .Papers }}
  - <details onclick="document.activeElement.blur();">
 	 <summary><a href="{{ .URL }}">{{ .Title }}</a> {{index $.Papers .}}</summary>
 	 <div class="wide"><i>{{ .Author }}</i>
@@ -76,11 +86,12 @@ var (
 <details id="archive">
   <summary>Archive</summary>
 
-{{ range $paper := sortedKeys . }}
-  - [{{ .Title }}]({{ .URL }})
-    {{- if .Abstract.FirstLine }}
+{{ range $title := sortedKeys . }}
+  {{ $paper := index $ . }}
+  - [{{ $paper.Title }}]({{ $paper.URL }})
+    {{- if $paper.Abstract.FirstLine }}
     <details>
-      <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.Rest}}
+      <summary>{{$paper.Abstract.FirstLine}}</summary>{{$paper.Abstract.Rest}}
     </details>
     {{ end }}
 {{ end }}
@@ -107,11 +118,11 @@ func NewJSONRenderer() Renderer { return &JSONRenderer{} }
 func (r *JSONRenderer) Render(out io.Writer, st *papers.Stats, unread, read papers.AggPapers) {
 	log.Print("formatting gmail messages in JSON")
 	encoder := json.NewEncoder(out)
-	for _, p := range papers.SortedKeys(unread) {
-		encoder.Encode(p)
+	for _, title := range papers.SortedKeys(unread) {
+		encoder.Encode(unread[title])
 	}
-	for _, p := range papers.SortedKeys(read) {
-		encoder.Encode(p)
+	for _, title := range papers.SortedKeys(read) {
+		encoder.Encode(read[title])
 	}
 }
 
@@ -126,6 +137,9 @@ func NewMarkdownRenderer(templateText, oldTemplateText string) Renderer {
 	return &MarkdownRenderer{
 		template.New("papers").Funcs(template.FuncMap{
 			"sortedKeys": papers.SortedKeys,
+			"inc": func(i int) int {
+				return i + 1
+			},
 		}),
 		templateText,
 		oldTemplateText,
@@ -147,7 +161,8 @@ func (r *MarkdownRenderer) newMdReport(out io.Writer, st *papers.Stats, agrPaper
 		UnreadEmails int
 		TotalPapers  int
 		UniqPapers   int
-		Papers       map[papers.Paper]int
+		// add MsgURLPrefix https://mail.google.com/mail/#inbox/<messageId>
+		Papers papers.AggPapers
 	}{
 		time.Now().Format(time.RFC3339),
 		st.Msgs,

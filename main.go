@@ -73,6 +73,7 @@ var (
 	markRead   = flag.Bool("mark", false, "marks all aggregated emails as read")
 	read       = flag.Bool("read", false, "include read emails to a separate section of the report")
 	authors    = flag.Bool("authors", false, "include paper authors in the report")
+	refs       = flag.Bool("refs", false, "include orignin references to Gmail messages in report")
 	onlySubj   = flag.Bool("subj", false, "aggregate only email subjects")
 	concurReq  = flag.Int("n", 10, "number of concurent Gmail API requests")
 )
@@ -124,7 +125,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to fetch messages from Gmail: %v", err)
 	}
-	unreadStats, unreadPapers := papers.ExtractPapersFromMsgs(urMsgs, *authors)
+	unreadStats, unreadPapers := papers.ExtractAndAggPapersFromMsgs(urMsgs, *authors, *refs)
 
 	readStats := &papers.Stats{}
 	var readPapers papers.AggPapers
@@ -133,7 +134,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Failed to fetch messages from Gmail")
 		}
-		readStats, readPapers = papers.ExtractPapersFromMsgs(rMsgs, *authors)
+		readStats, readPapers = papers.ExtractAndAggPapersFromMsgs(rMsgs, *authors, *refs)
 	}
 
 	// render papers
@@ -143,6 +144,7 @@ func main() {
 		template, style = templates.CompactMdTemplText, templates.CompatStyle
 	}
 
+	log.Printf("rendering %d papers", len(unreadPapers)+len(readPapers))
 	if *outputJSON {
 		r = templates.NewJSONRenderer()
 	} else if *outputHTML {
