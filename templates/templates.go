@@ -42,7 +42,9 @@ var (
  - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
    {{- if .Abstract.FirstLine }}
    <details>
-     <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.Rest}}
+     <summary>{{.Abstract.FirstLine}}</summary>
+     <div>{{.Abstract.Rest}}</div>
+     <i>{{ .Author }}</i>
    </details>
    {{ end }}
 {{ end }}
@@ -58,10 +60,12 @@ var (
 ## New papers
 {{ range $paper := sortedKeys .Papers }}
  - <details onclick="document.activeElement.blur();">
-     <summary><a href="{{ .URL }}">{{ .Title }}</a> {{index $.Papers .}}</summary>
+	 <summary><a href="{{ .URL }}">{{ .Title }}</a> {{index $.Papers .}}</summary>
+	 <div class="wide"><i>{{ .Author }}</i>
      {{ if .Abstract.FirstLine -}}
-       <div class="wide">{{.Abstract.FirstLine}} {{.Abstract.Rest}}</div>
-     {{ end }}
+       <div>{{.Abstract.FirstLine}} {{.Abstract.Rest}}</div>
+	 {{ end }}
+	 </div>
    </details>
 {{ end }}
 `
@@ -86,7 +90,7 @@ var (
 	CompatStyle = `
 ul { list-style-type: none; margin: 0; padding: 0 0 0 20px; }
 #archive>ul {list-style-type: circle; }
-.wide { max-width:60%; margin-left: 1em; padding: 0.5em 0; }
+.wide { max-width:60%; margin-left: 1em; padding: 0.2em 0 0.5em 0; }
 `
 )
 

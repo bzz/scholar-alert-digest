@@ -43,7 +43,7 @@ import (
 const (
 	labelName = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
 
-	usageMessage = `usage: go run [-labels | -subj] [-html | -json] [-compact] [-mark] [-read] [-l <your-gmail-label>] [-n]
+	usageMessage = `usage: go run [-labels | -subj] [-html | -json] [-compact] [-mark] [-read] [-authors] [-l <your-gmail-label>] [-n]
 
 Polls Gmail API for unread Google Scholar alert messaged under a given label,
 aggregates by paper title and prints a list of paper URLs in Markdown format.
@@ -57,6 +57,7 @@ The -json flag will produce output in JSONL format, one paper object per line.
 The -compact flag will produce ouput report in compact format, usefull >100 papers.
 The -mark flag will mark all the aggregated emails as read in Gmail.
 The -read flag will include a new section in the report, aggregating all read emails.
+The -authors flag will include paper authors in the report.
 `
 )
 
@@ -71,6 +72,7 @@ var (
 	compact    = flag.Bool("compact", false, "output report in compact format (>100 papers)")
 	markRead   = flag.Bool("mark", false, "marks all aggregated emails as read")
 	read       = flag.Bool("read", false, "include read emails to a separate section of the report")
+	authors    = flag.Bool("authors", false, "include paper authors in the report")
 	onlySubj   = flag.Bool("subj", false, "aggregate only email subjects")
 	concurReq  = flag.Int("n", 10, "number of concurent Gmail API requests")
 )
@@ -122,7 +124,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to fetch messages from Gmail: %v", err)
 	}
-	unreadStats, unreadPapers := papers.ExtractPapersFromMsgs(urMsgs)
+	unreadStats, unreadPapers := papers.ExtractPapersFromMsgs(urMsgs, *authors)
 
 	readStats := &papers.Stats{}
 	var readPapers papers.AggPapers
@@ -131,7 +133,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Failed to fetch messages from Gmail")
 		}
-		readStats, readPapers = papers.ExtractPapersFromMsgs(rMsgs)
+		readStats, readPapers = papers.ExtractPapersFromMsgs(rMsgs, *authors)
 	}
 
 	// render papers
