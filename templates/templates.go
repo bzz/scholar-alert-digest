@@ -69,12 +69,13 @@ var (
 
 ## New papers
 {{ range $title := sortedKeys .Papers }}
+   {{ $paper := index $.Papers . }}
  - <details onclick="document.activeElement.blur();">
-	 <summary><a href="{{ .URL }}">{{ .Title }}</a> {{index $.Papers .}}</summary>
-	 <div class="wide"><i>{{ .Author }}</i>
-     {{ if .Abstract.FirstLine -}}
-       <div>{{.Abstract.FirstLine}} {{.Abstract.Rest}}</div>
-	 {{ end }}
+	 <summary><a href="{{ $paper.URL }}">{{ $paper.Title }}</a> ({{$paper.Freq}})</summary>
+	 <div class="wide"><i>{{ $paper.Author }}</i>
+     {{- if $paper.Abstract.FirstLine }}
+	   <div>{{$paper.Abstract.FirstLine}} {{$paper.Abstract.Rest}}</div>
+	 {{- end }}
 	 </div>
    </details>
 {{ end }}
