@@ -43,7 +43,7 @@ import (
 const (
 	labelName = "[-oss-]-_ml-in-se" // "[ OSS ]/_ML-in-SE" in the Web UI
 
-	usageMessage = `usage: go run [-labels | -subj] [-html | -json] [-compact] [-mark] [-read] [-authors] [-l <your-gmail-label>] [-n]
+	usageMessage = `usage: go run [-labels | -subj] [-html | -json] [-compact] [-mark] [-read] [-authors] [-refs] [-l <your-gmail-label>] [-n]
 
 Polls Gmail API for unread Google Scholar alert messaged under a given label,
 aggregates by paper title and prints a list of paper URLs in Markdown format.
@@ -58,6 +58,7 @@ The -compact flag will produce ouput report in compact format, usefull >100 pape
 The -mark flag will mark all the aggregated emails as read in Gmail.
 The -read flag will include a new section in the report, aggregating all read emails.
 The -authors flag will include paper authors in the report.
+The -refs flag will add links to all email messages that mention each paper.
 `
 )
 
