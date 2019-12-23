@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/bzz/scholar-alert-digest/papers"
@@ -49,15 +50,16 @@ var (
    </details>
    {{ end }}
 {{ end }}
-
+`
+	refsMdTemplateText = `
 {{ define "refs" -}}
 ({{ if eq (len .Refs) 0}}{{ .Freq }}{{end}}
 {{- if gt (len .Refs) 1 }}{{ .Freq }}: {{ end }}
-{{- range $i, $r := .Refs}}
+{{- range $i, $ID := .Refs}}
 	{{- if $i}}, {{end}}
-	{{- printf "[%d](https://mail.google.com/mail/#inbox/%s)" (inc $i) $r -}}
+	{{- anchorHTML $ID "" $i -}}
 {{- end}})
-{{ end }}
+{{- end }}
 `
 
 	CompactMdTemplText = `# Google Scholar Alert Digest
@@ -71,7 +73,7 @@ var (
 {{ range $title := sortedKeys .Papers }}
    {{ $paper := index $.Papers . }}
  - <details onclick="document.activeElement.blur();">
-	 <summary><a href="{{ $paper.URL }}">{{ $paper.Title }}</a> ({{$paper.Freq}})</summary>
+	 <summary><a href="{{ $paper.URL }}">{{ $paper.Title }}</a> {{ template "refs" $paper }}</summary>
 	 <div class="wide"><i>{{ $paper.Author }}</i>
      {{- if $paper.Abstract.FirstLine }}
 	   <div>{{$paper.Abstract.FirstLine}} {{$paper.Abstract.Rest}}</div>
@@ -138,8 +140,19 @@ func NewMarkdownRenderer(templateText, oldTemplateText string) Renderer {
 	return &MarkdownRenderer{
 		template.New("papers").Funcs(template.FuncMap{
 			"sortedKeys": papers.SortedKeys,
-			"inc": func(i int) int {
-				return i + 1
+			"anchorHTML": func(ID, title string, i int) template.HTML {
+				if title == "" {
+					title = strconv.Itoa(i + 1)
+				}
+				// Needed for re-use of refsMdTemplate between -compact and normal Md:
+				//  * in -compact, markdown syntax for links will not be rendered inside <summary>
+				//  * html/template escape HTML strings \wo template.HTML
+				return template.HTML(
+					fmt.Sprintf(
+						"<a target='_blank' href='https://mail.google.com/mail/#inbox/%s'>%s</a>",
+						ID, title,
+					),
+				)
 			},
 		}),
 		templateText,
@@ -156,7 +169,9 @@ func (r *MarkdownRenderer) Render(out io.Writer, st *papers.Stats, unread, read 
 
 // newMdReport renderes tmplText \w email msg stats (for new, unread papers).
 func (r *MarkdownRenderer) newMdReport(out io.Writer, st *papers.Stats, agrPapers papers.AggPapers) {
-	tmpl := template.Must(template.Must(r.layout.Clone()).Parse(r.template))
+	layout := template.Must(r.layout.Clone())
+	tmpl := template.Must(layout.Parse(r.template))
+	tmpl = template.Must(tmpl.Parse(refsMdTemplateText))
 	err := tmpl.Execute(out, struct {
 		Date         string
 		UnreadEmails int
@@ -178,7 +193,8 @@ func (r *MarkdownRenderer) newMdReport(out io.Writer, st *papers.Stats, agrPaper
 
 // oldMdReport renderes tmplText \wo stats (for old, read papers).
 func (r *MarkdownRenderer) oldMdReport(out io.Writer, agrPapers papers.AggPapers) {
-	tmpl := template.Must(template.Must(r.layout.Clone()).Parse(r.oldTempate))
+	layout := template.Must(r.layout.Clone())
+	tmpl := template.Must(layout.Parse(r.oldTempate))
 	err := tmpl.Execute(out, agrPapers)
 	if err != nil {
 		log.Fatalf("template %q execution failed: %s", r.oldTempate, err)
