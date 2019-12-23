@@ -221,8 +221,8 @@ func Subject(m *gmail.MessagePart) string {
 }
 
 // MessageTextBody returns the text (if any) of a given message ID
-func MessageTextBody(m *gmail.Message) ([]byte, error) {
-	body, _, err := recursiveDecodeParts(m.Payload, "text/html")
+func MessageTextBody(payload *gmail.MessagePart) ([]byte, error) {
+	body, _, err := recursiveDecodeParts(payload, "text/html")
 	if body == nil {
 		return nil, errors.New("no message payload")
 	}

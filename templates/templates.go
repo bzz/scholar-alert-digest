@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/bzz/scholar-alert-digest/papers"
@@ -38,16 +39,27 @@ var (
 **Uniq paper titles**: {{.UniqPapers}}
 
 ## New papers
-{{ range $paper := sortedKeys .Papers }}
- - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
-   {{- if .Abstract.FirstLine }}
+{{ range $title := sortedKeys .Papers }}
+   {{ $paper := index $.Papers . }}
+ - [{{ $paper.Title }}]({{ $paper.URL }}) {{ template "refs" $paper }}
+   {{- if $paper.Abstract.FirstLine }}
    <details>
-     <summary>{{.Abstract.FirstLine}}</summary>
-     <div>{{.Abstract.Rest}}</div>
-     <i>{{ .Author }}</i>
+     <summary>{{ $paper.Abstract.FirstLine }}</summary>
+     <div>{{ $paper.Abstract.Rest }}</div>
+     {{if $paper.Author}}<i>{{ $paper.Author }}</i>{{end}}
    </details>
    {{ end }}
 {{ end }}
+`
+	refsMdTemplateText = `
+{{ define "refs" -}}
+({{ if eq (len .Refs) 0}}{{ .Freq }}{{end}}
+{{- if gt (len .Refs) 1 }}{{ .Freq }}: {{ end }}
+{{- range $i, $ID := .Refs}}
+	{{- if $i}}, {{end}}
+	{{- anchorHTML $ID "" $i -}}
+{{- end}})
+{{- end }}
 `
 
 	CompactMdTemplText = `# Google Scholar Alert Digest
@@ -58,13 +70,14 @@ var (
 **Uniq paper titles**: {{.UniqPapers}}
 
 ## New papers
-{{ range $paper := sortedKeys .Papers }}
+{{ range $title := sortedKeys .Papers }}
+   {{ $paper := index $.Papers . }}
  - <details onclick="document.activeElement.blur();">
-	 <summary><a href="{{ .URL }}">{{ .Title }}</a> {{index $.Papers .}}</summary>
-	 <div class="wide"><i>{{ .Author }}</i>
-     {{ if .Abstract.FirstLine -}}
-       <div>{{.Abstract.FirstLine}} {{.Abstract.Rest}}</div>
-	 {{ end }}
+	 <summary><a href="{{ $paper.URL }}">{{ $paper.Title }}</a> {{ template "refs" $paper }}</summary>
+	 <div class="wide"><i>{{ $paper.Author }}</i>
+     {{- if $paper.Abstract.FirstLine }}
+	   <div>{{$paper.Abstract.FirstLine}} {{$paper.Abstract.Rest}}</div>
+	 {{- end }}
 	 </div>
    </details>
 {{ end }}
@@ -76,11 +89,12 @@ var (
 <details id="archive">
   <summary>Archive</summary>
 
-{{ range $paper := sortedKeys . }}
-  - [{{ .Title }}]({{ .URL }})
-    {{- if .Abstract.FirstLine }}
+{{ range $title := sortedKeys . }}
+  {{ $paper := index $ . }}
+  - [{{ $paper.Title }}]({{ $paper.URL }})
+    {{- if $paper.Abstract.FirstLine }}
     <details>
-      <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.Rest}}
+      <summary>{{$paper.Abstract.FirstLine}}</summary>{{$paper.Abstract.Rest}}
     </details>
     {{ end }}
 {{ end }}
@@ -107,11 +121,11 @@ func NewJSONRenderer() Renderer { return &JSONRenderer{} }
 func (r *JSONRenderer) Render(out io.Writer, st *papers.Stats, unread, read papers.AggPapers) {
 	log.Print("formatting gmail messages in JSON")
 	encoder := json.NewEncoder(out)
-	for _, p := range papers.SortedKeys(unread) {
-		encoder.Encode(p)
+	for _, title := range papers.SortedKeys(unread) {
+		encoder.Encode(unread[title])
 	}
-	for _, p := range papers.SortedKeys(read) {
-		encoder.Encode(p)
+	for _, title := range papers.SortedKeys(read) {
+		encoder.Encode(read[title])
 	}
 }
 
@@ -126,6 +140,20 @@ func NewMarkdownRenderer(templateText, oldTemplateText string) Renderer {
 	return &MarkdownRenderer{
 		template.New("papers").Funcs(template.FuncMap{
 			"sortedKeys": papers.SortedKeys,
+			"anchorHTML": func(ID, title string, i int) template.HTML {
+				if title == "" {
+					title = strconv.Itoa(i + 1)
+				}
+				// Needed for re-use of refsMdTemplate between -compact and normal Md:
+				//  * in -compact, markdown syntax for links will not be rendered inside <summary>
+				//  * html/template escape HTML strings \wo template.HTML
+				return template.HTML(
+					fmt.Sprintf(
+						"<a target='_blank' href='https://mail.google.com/mail/#inbox/%s'>%s</a>",
+						ID, title,
+					),
+				)
+			},
 		}),
 		templateText,
 		oldTemplateText,
@@ -141,13 +169,15 @@ func (r *MarkdownRenderer) Render(out io.Writer, st *papers.Stats, unread, read 
 
 // newMdReport renderes tmplText \w email msg stats (for new, unread papers).
 func (r *MarkdownRenderer) newMdReport(out io.Writer, st *papers.Stats, agrPapers papers.AggPapers) {
-	tmpl := template.Must(template.Must(r.layout.Clone()).Parse(r.template))
+	layout := template.Must(r.layout.Clone())
+	tmpl := template.Must(layout.Parse(r.template))
+	tmpl = template.Must(tmpl.Parse(refsMdTemplateText))
 	err := tmpl.Execute(out, struct {
 		Date         string
 		UnreadEmails int
 		TotalPapers  int
 		UniqPapers   int
-		Papers       map[papers.Paper]int
+		Papers       papers.AggPapers
 	}{
 		time.Now().Format(time.RFC3339),
 		st.Msgs,
@@ -162,7 +192,8 @@ func (r *MarkdownRenderer) newMdReport(out io.Writer, st *papers.Stats, agrPaper
 
 // oldMdReport renderes tmplText \wo stats (for old, read papers).
 func (r *MarkdownRenderer) oldMdReport(out io.Writer, agrPapers papers.AggPapers) {
-	tmpl := template.Must(template.Must(r.layout.Clone()).Parse(r.oldTempate))
+	layout := template.Must(r.layout.Clone())
+	tmpl := template.Must(layout.Parse(r.oldTempate))
 	err := tmpl.Execute(out, agrPapers)
 	if err != nil {
 		log.Fatalf("template %q execution failed: %s", r.oldTempate, err)

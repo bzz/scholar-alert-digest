@@ -74,6 +74,16 @@ There is an optional more compact report template that may be useful for a big n
 go run main.go -compact
 ```
 
+To include authors in the paper details snippet, use
+```
+go run main.go -authors
+```
+
+To include references to original email into the report, do:
+```
+go run main.go -refs
+```
+
 # Web server
 Web UI that exposes basic HTML report generation to multiple concurrent users.
 
