@@ -41,12 +41,11 @@ var (
 ## New papers
 {{ range $title := sortedKeys .Papers }}
    {{ $paper := index $.Papers . }}
- - [{{ $paper.Title }}]({{ $paper.URL }}) {{ template "refs" $paper }}
+ - [{{ $paper.Title }}]({{ $paper.URL }}){{if $paper.Author}}, <i>{{ $paper.Author }}</i>{{end}} {{ template "refs" $paper }}
    {{- if $paper.Abstract.FirstLine }}
    <details>
      <summary>{{ $paper.Abstract.FirstLine }}</summary>
      <div>{{ $paper.Abstract.Rest }}</div>
-     {{if $paper.Author}}<i>{{ $paper.Author }}</i>{{end}}
    </details>
    {{ end }}
 {{ end }}
@@ -73,8 +72,8 @@ var (
 {{ range $title := sortedKeys .Papers }}
    {{ $paper := index $.Papers . }}
  - <details onclick="document.activeElement.blur();">
-	 <summary><a href="{{ $paper.URL }}">{{ $paper.Title }}</a> {{ template "refs" $paper }}</summary>
-	 <div class="wide"><i>{{ $paper.Author }}</i>
+	 <summary><a href="{{ $paper.URL }}">{{ $paper.Title }}</a>, <i>{{ $paper.Author }}</i> {{ template "refs" $paper }}</summary>
+	 <div class="wide">
      {{- if $paper.Abstract.FirstLine }}
 	   <div>{{$paper.Abstract.FirstLine}} {{$paper.Abstract.Rest}}</div>
 	 {{- end }}
