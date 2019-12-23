@@ -26,8 +26,9 @@ type Paper struct {
 	URL      string
 	Author   string `json:",omitempty"`
 	Abstract Abstract
-	Refs     []string `json:",omitempty"`
-	Freq     int
+	// TODO(bzz): add Ref.Title and Ref.ID
+	Refs []string `json:",omitempty"`
+	Freq int
 }
 
 // Abstract represents a view of the parsed abstract.

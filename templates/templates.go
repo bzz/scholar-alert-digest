@@ -177,8 +177,7 @@ func (r *MarkdownRenderer) newMdReport(out io.Writer, st *papers.Stats, agrPaper
 		UnreadEmails int
 		TotalPapers  int
 		UniqPapers   int
-		// add MsgURLPrefix https://mail.google.com/mail/#inbox/<messageId>
-		Papers papers.AggPapers
+		Papers       papers.AggPapers
 	}{
 		time.Now().Format(time.RFC3339),
 		st.Msgs,
