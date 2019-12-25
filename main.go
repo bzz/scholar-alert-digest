@@ -105,8 +105,8 @@ func main() {
 	}
 
 	if *onlySubj {
-		log.Print("only extracting the subjects")
-		query := fmt.Sprintf("label:%s is:unread", *gmailLabel)
+		log.Print("only extracting the subjects from scholar emails")
+		query := fmt.Sprintf("label:%s is:unread from:scholaralerts-noreply", *gmailLabel)
 		if *read {
 			query = strings.TrimSuffix(query, " is:unread")
 		}
@@ -172,10 +172,13 @@ func printSubjects(msgs []*gmail.Message) {
 	var subjs []string
 	for _, m := range msgs {
 		subj := gmailutils.Subject(m.Payload)
-		srcType, sep := splitOnDash(subj)
+		srcType, _ := splitOnDash(subj) // this handles at least EN and FR locales
 		if len(srcType) != 2 {
-			log.Printf("subject %q can not be split by %q", subj, sep)
-			continue
+			srcType = splitOnRuLocale(subj)
+			if len(srcType) != 2 {
+				log.Printf("subject %q does not match EN, FR or RU locales patterns", subj)
+				continue
+			}
 		}
 
 		subjs = append(subjs, fmt.Sprintf("%-22s | %s", srcType[1], srcType[0]))
@@ -184,6 +187,42 @@ func printSubjects(msgs []*gmail.Message) {
 	for _, s := range subjs {
 		fmt.Printf("%s\n", s)
 	}
+}
+
+type subjFormat struct{ en, ru string }
+
+func splitOnRuLocale(s string) []string {
+	var (
+		result []string
+
+		citations = subjFormat{
+			": новые ссылки", "new citations",
+		}
+		related = subjFormat{
+			"Новые статьи, связанные с работами автора ", "new related research",
+		}
+		query = subjFormat{
+			"Новые результаты по запросу ", "new results",
+		}
+		articles = subjFormat{
+			"Новые статьи пользователя ", "new articles",
+		}
+	)
+
+	switch {
+	case strings.HasSuffix(s, citations.ru):
+		result = []string{s[:strings.Index(s, citations.ru)], citations.en}
+	case s == "Новые ссылки на мои статьи":
+		result = []string{"me", citations.en}
+	case strings.HasPrefix(s, related.ru):
+		result = []string{s[strings.Index(s, related.ru):], related.en}
+	case strings.HasPrefix(s, query.ru):
+		result = []string{s[strings.Index(s, query.ru):], query.en}
+	case strings.HasPrefix(s, articles.ru):
+		result = []string{s[strings.Index(s, articles.ru):], articles.en}
+	}
+
+	return result
 }
 
 // splitOnDash returns str, split on unicode Dash and a separator.
