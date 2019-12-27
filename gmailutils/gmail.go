@@ -29,6 +29,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils/token"
 
@@ -218,6 +220,68 @@ func Subject(m *gmail.MessagePart) string {
 		}
 	}
 	return ""
+}
+
+// NormalizeAndSplit normalizes subj format and split it to type/source.
+func NormalizeAndSplit(subj string) []string {
+	srcType, _ := splitOnDash(subj) // handles at least EN and FR locales
+	if len(srcType) != 2 {
+		srcType = splitOnRuLocale(subj)
+	}
+	return srcType
+}
+
+type subjFormat struct{ ru, en string }
+
+// splitOnRuLocale normalizes subj from RU locale.
+func splitOnRuLocale(s string) []string {
+	var (
+		result []string
+
+		citations = subjFormat{
+			": новые ссылки", "new citations",
+		}
+		related = subjFormat{
+			"Новые статьи, связанные с работами автора ", "new related research",
+		}
+		query = subjFormat{
+			"Новые результаты по запросу ", "new results",
+		}
+		articles = subjFormat{
+			"Новые статьи пользователя ", "new articles",
+		}
+	)
+
+	switch {
+	case strings.HasSuffix(s, citations.ru):
+		result = []string{s[:strings.Index(s, citations.ru)], citations.en}
+	case s == "Новые ссылки на мои статьи":
+		result = []string{"me", citations.en}
+	case strings.HasPrefix(s, related.ru):
+		result = []string{s[strings.Index(s, related.ru):], related.en}
+	case strings.HasPrefix(s, query.ru):
+		result = []string{s[strings.Index(s, query.ru):], query.en}
+	case strings.HasPrefix(s, articles.ru):
+		result = []string{s[strings.Index(s, articles.ru):], articles.en}
+	}
+
+	return result
+}
+
+// splitOnDash returns str, split on unicode Dash and a separator.
+func splitOnDash(str string) ([]string, string) {
+	s := str
+	dash := "-"
+	for len(s) > 0 {
+		r, size := utf8.DecodeRuneInString(s)
+		s = s[size:]
+		if unicode.In(r, unicode.Dash) {
+			dash = string(r)
+			break
+		}
+	}
+	sep := fmt.Sprintf(" %s ", dash)
+	return strings.Split(str, sep), sep
 }
 
 // MessageTextBody returns the text (if any) of a given message ID

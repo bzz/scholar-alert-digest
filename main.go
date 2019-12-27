@@ -30,8 +30,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 	"github.com/bzz/scholar-alert-digest/papers"
@@ -172,13 +170,10 @@ func printSubjects(msgs []*gmail.Message) {
 	var subjs []string
 	for _, m := range msgs {
 		subj := gmailutils.Subject(m.Payload)
-		srcType, _ := splitOnDash(subj) // this handles at least EN and FR locales
+		srcType := gmailutils.NormalizeAndSplit(subj)
 		if len(srcType) != 2 {
-			srcType = splitOnRuLocale(subj)
-			if len(srcType) != 2 {
-				log.Printf("subject %q does not match EN, FR or RU locales patterns", subj)
-				continue
-			}
+			log.Printf("subject %q does not match EN, FR or RU locales patterns", subj)
+			continue
 		}
 
 		subjs = append(subjs, fmt.Sprintf("%-22s | %s", srcType[1], srcType[0]))
@@ -187,56 +182,4 @@ func printSubjects(msgs []*gmail.Message) {
 	for _, s := range subjs {
 		fmt.Printf("%s\n", s)
 	}
-}
-
-type subjFormat struct{ en, ru string }
-
-func splitOnRuLocale(s string) []string {
-	var (
-		result []string
-
-		citations = subjFormat{
-			": новые ссылки", "new citations",
-		}
-		related = subjFormat{
-			"Новые статьи, связанные с работами автора ", "new related research",
-		}
-		query = subjFormat{
-			"Новые результаты по запросу ", "new results",
-		}
-		articles = subjFormat{
-			"Новые статьи пользователя ", "new articles",
-		}
-	)
-
-	switch {
-	case strings.HasSuffix(s, citations.ru):
-		result = []string{s[:strings.Index(s, citations.ru)], citations.en}
-	case s == "Новые ссылки на мои статьи":
-		result = []string{"me", citations.en}
-	case strings.HasPrefix(s, related.ru):
-		result = []string{s[strings.Index(s, related.ru):], related.en}
-	case strings.HasPrefix(s, query.ru):
-		result = []string{s[strings.Index(s, query.ru):], query.en}
-	case strings.HasPrefix(s, articles.ru):
-		result = []string{s[strings.Index(s, articles.ru):], articles.en}
-	}
-
-	return result
-}
-
-// splitOnDash returns str, split on unicode Dash and a separator.
-func splitOnDash(str string) ([]string, string) {
-	s := str
-	dash := "-"
-	for len(s) > 0 {
-		r, size := utf8.DecodeRuneInString(s)
-		s = s[size:]
-		if unicode.In(r, unicode.Dash) {
-			dash = string(r)
-			break
-		}
-	}
-	sep := fmt.Sprintf(" %s ", dash)
-	return strings.Split(str, sep), sep
 }
