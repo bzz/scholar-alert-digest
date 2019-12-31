@@ -30,8 +30,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 	"github.com/bzz/scholar-alert-digest/papers"
@@ -105,8 +103,8 @@ func main() {
 	}
 
 	if *onlySubj {
-		log.Print("only extracting the subjects")
-		query := fmt.Sprintf("label:%s is:unread", *gmailLabel)
+		log.Print("only extracting the subjects from scholar emails")
+		query := fmt.Sprintf("label:%s is:unread from:scholaralerts-noreply", *gmailLabel)
 		if *read {
 			query = strings.TrimSuffix(query, " is:unread")
 		}
@@ -172,9 +170,9 @@ func printSubjects(msgs []*gmail.Message) {
 	var subjs []string
 	for _, m := range msgs {
 		subj := gmailutils.Subject(m.Payload)
-		srcType, sep := splitOnDash(subj)
+		srcType := gmailutils.NormalizeAndSplit(subj)
 		if len(srcType) != 2 {
-			log.Printf("subject %q can not be split by %q", subj, sep)
+			log.Printf("subject %q does not match EN, FR or RU locales patterns", subj)
 			continue
 		}
 
@@ -184,20 +182,4 @@ func printSubjects(msgs []*gmail.Message) {
 	for _, s := range subjs {
 		fmt.Printf("%s\n", s)
 	}
-}
-
-// splitOnDash returns str, split on unicode Dash and a separator.
-func splitOnDash(str string) ([]string, string) {
-	s := str
-	dash := "-"
-	for len(s) > 0 {
-		r, size := utf8.DecodeRuneInString(s)
-		s = s[size:]
-		if unicode.In(r, unicode.Dash) {
-			dash = string(r)
-			break
-		}
-	}
-	sep := fmt.Sprintf(" %s ", dash)
-	return strings.Split(str, sep), sep
 }
