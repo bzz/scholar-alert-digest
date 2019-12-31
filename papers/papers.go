@@ -173,7 +173,14 @@ func extractPapersFromMsg(m *gmail.Message, inclAuthors bool) ([]*Paper, error) 
 
 		mSrc := ""
 		if srcType := gmailutils.NormalizeAndSplit(subj); len(srcType) == 2 {
-			mSrc = srcType[0]
+			// FIXME(bzz): this is a hack, replace it by switch over
+			// some exported types e.g gmailutils.Citations
+			if (strings.Index(srcType[1], "articles") > 0 ||
+				strings.Index(srcType[1], "citations") > 0 ||
+				strings.Index(srcType[1], "research") > 0) &&
+				strings.Index(srcType[0], `"`) == -1 {
+				mSrc = srcType[0]
+			}
 		}
 
 		papers = append(papers,
