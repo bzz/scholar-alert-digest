@@ -231,38 +231,38 @@ func NormalizeAndSplit(subj string) []string {
 	return srcType
 }
 
-type subjFormat struct{ ru, en string }
+type subjFormat struct{ ru, En string }
+
+var (
+	citations = subjFormat{
+		": новые ссылки", "new citations",
+	}
+	related = subjFormat{
+		"Новые статьи, связанные с работами автора ", "new related research",
+	}
+	search = subjFormat{
+		"Новые результаты по запросу ", "new results",
+	}
+	articles = subjFormat{
+		"Новые статьи пользователя ", "new articles",
+	}
+)
 
 // splitOnRuLocale normalizes subj from RU locale.
 func splitOnRuLocale(s string) []string {
-	var (
-		result []string
-
-		citations = subjFormat{
-			": новые ссылки", "new citations",
-		}
-		related = subjFormat{
-			"Новые статьи, связанные с работами автора ", "new related research",
-		}
-		query = subjFormat{
-			"Новые результаты по запросу ", "new results",
-		}
-		articles = subjFormat{
-			"Новые статьи пользователя ", "new articles",
-		}
-	)
+	var result []string
 
 	switch {
 	case strings.HasSuffix(s, citations.ru):
-		result = []string{s[:strings.Index(s, citations.ru)], citations.en}
+		result = []string{s[:strings.Index(s, citations.ru)], citations.En}
 	case s == "Новые ссылки на мои статьи":
-		result = []string{"me", citations.en}
+		result = []string{"me", citations.En}
 	case strings.HasPrefix(s, related.ru):
-		result = []string{s[strings.Index(s, related.ru):], related.en}
-	case strings.HasPrefix(s, query.ru):
-		result = []string{s[strings.Index(s, query.ru):], query.en}
+		result = []string{s[len(related.ru):], related.En}
+	case strings.HasPrefix(s, search.ru):
+		result = []string{s[len(search.ru):], search.En}
 	case strings.HasPrefix(s, articles.ru):
-		result = []string{s[strings.Index(s, articles.ru):], articles.en}
+		result = []string{s[len(articles.ru):], articles.En}
 	}
 
 	return result
