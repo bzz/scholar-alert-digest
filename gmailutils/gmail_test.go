@@ -31,6 +31,9 @@ func TestSubjSplit(t *testing.T) {
 			`Новые результаты по запросу "deep learning source code"`,
 			`"deep learning source code"`, search.En,
 		},
+		// {
+		// 	`Рекомендуемые статьи`, "", recomended.En
+		// }
 	}
 
 	for _, f := range fixtures {

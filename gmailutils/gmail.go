@@ -246,6 +246,10 @@ var (
 	articles = subjFormat{
 		"Новые статьи пользователя ", "new articles",
 	}
+	// TODO(bzz): add this as well
+	// recomended = subjFormat{
+	// 	"Рекомендуемые статьи", "?????????",
+	// }
 )
 
 // splitOnRuLocale normalizes subj from RU locale.
