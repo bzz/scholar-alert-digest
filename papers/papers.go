@@ -26,9 +26,13 @@ type Paper struct {
 	URL      string
 	Author   string `json:",omitempty"`
 	Abstract Abstract
-	// TODO(bzz): add Ref.Title and Ref.ID
-	Refs []string `json:",omitempty"`
-	Freq int
+	Refs     []Ref `json:",omitempty"`
+	Freq     int
+}
+
+// Ref saves information about a source, referencing the paper.
+type Ref struct {
+	ID, Title string
 }
 
 // Abstract represents a view of the parsed abstract.
@@ -165,11 +169,17 @@ func extractPapersFromMsg(m *gmail.Message, inclAuthors bool) ([]*Paper, error) 
 
 		N, lookahead := 80, 10 // max number of runes to process
 		first, rest := separateFirstLine(abstract, N, lookahead)
+		abs := Abstract{first, rest}
+
+		mSrc := ""
+		if srcType := gmailutils.NormalizeAndSplit(subj); len(srcType) == 2 {
+			mSrc = srcType[0]
+		}
+
 		papers = append(papers,
 			&Paper{
-				title, url, author,
-				Abstract{first, rest},
-				[]string{m.Id},
+				title, url, author, abs,
+				[]Ref{Ref{m.Id, mSrc}},
 				1,
 			})
 	}

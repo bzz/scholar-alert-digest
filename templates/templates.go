@@ -53,12 +53,12 @@ var (
 	refsMdTemplateText = `
 {{ define "refs" -}}
 ({{ if eq (len .Refs) 0}}{{ .Freq }}{{end}}
-{{- if gt (len .Refs) 1 }}{{ .Freq }}: {{ end }}
-{{- range $i, $ID := .Refs}}
+{{- if gt (len .Refs) 1}}{{ .Freq }}: {{end}}
+{{- range $i, $ref := .Refs}}
 	{{- if $i}}, {{end}}
-	{{- anchorHTML $ID "" $i -}}
+	{{- anchorHTML $ref.ID $ref.Title $i -}}
 {{- end}})
-{{- end }}
+{{- end}}
 `
 
 	CompactMdTemplText = `# Google Scholar Alert Digest
