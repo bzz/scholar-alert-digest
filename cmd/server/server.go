@@ -75,13 +75,11 @@ var ( // configuration
 
 var ( // CLI
 	compact = flag.Bool("compact", false, "output report in compact format (>100 papers)")
+	test    = flag.Bool("test", false, "read emails from ./fixtures/* instead of real Gmail")
 	// TODO(bzz): add -read support + equivalent per-user config option (cookies)
 )
 
-var (
-	htmlRn templates.Renderer
-	jsonRn templates.Renderer
-)
+var htmlRn, jsonRn templates.Renderer
 
 func main() {
 	flag.Parse()
@@ -113,28 +111,34 @@ func main() {
 func handleRoot(w http.ResponseWriter, r *http.Request) {
 	// get token, stored in context by middleware (from cookies)
 	tok, authorized := token.FromContext(r.Context())
-	if !authorized { // TODO(bzz): move this to middleware
+	if !authorized && !*test { // TODO(bzz): move this to middleware
 		log.Printf("Redirecting to /login as three is no session")
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
 
 	gmailLabel, hasLabel := token.LabelFromContext(r.Context())
-	if !hasLabel {
+	if !hasLabel && !*test {
 		log.Printf("Redirecting to /labels as there is no label")
 		http.Redirect(w, r, "/labels", http.StatusFound)
 		return
 	}
 
 	// find and fetch the messages
-	srv, _ := gmail.New(oauthCfg.Client(r.Context(), tok)) // ignore err as client != nil
-	query := fmt.Sprintf("label:%s is:unread", gmailLabel)
-	urMsgs, err := gmailutils.FetchConcurent(context.Background(), srv, user, query, concurReq)
-	if err != nil {
-		// TODO(bzz): token expiration looks ugly here and must be handled elsewhere
-		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(err.Error()))
-		return
+	var urMsgs []*gmail.Message
+	if !*test { // TODO(bzz): refactor, replace \w polymorphism though interface for fetching messages
+		var err error
+		srv, _ := gmail.New(oauthCfg.Client(r.Context(), tok)) // ignore err as client != nil
+		query := fmt.Sprintf("label:%s is:unread", gmailLabel)
+		urMsgs, err = gmailutils.FetchConcurent(context.Background(), srv, user, query, concurReq)
+		if err != nil {
+			// TODO(bzz): token expiration looks ugly here and must be handled elsewhere
+			w.WriteHeader(http.StatusServiceUnavailable)
+			w.Write([]byte(err.Error()))
+			return
+		}
+	} else {
+		urMsgs = gmailutils.ReadFixturesJSON("./fixtures/emails.json")
 	}
 
 	// aggregate
