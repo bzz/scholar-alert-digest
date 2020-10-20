@@ -105,6 +105,13 @@ export SAD_GOOGLE_SECRET='<client secret>'
 You do not need to pass the label name on the startup as it can be chosen at
 runtime at [/labels](http://localhost:8080/labels).
 
+## Test
+It is possible to test server locally without Gmail app configuration, using emails from `./fixtures` with
+
+```
+go run ./cmd/server -test
+```
+
 ## Run
 The report generation is exposed though a web server that can be started with
 ```
