@@ -78,7 +78,10 @@ var ( // CLI
 	// TODO(bzz): add -read support + equivalent per-user config option (cookies)
 )
 
-var htmlRn templates.Renderer
+var (
+	htmlRn templates.Renderer
+	jsonRn templates.Renderer
+)
 
 func main() {
 	flag.Parse()
@@ -88,6 +91,7 @@ func main() {
 		templateText, style = templates.CompactMdTemplText, templates.CompatStyle
 	}
 	htmlRn = templates.NewHTMLRenderer(templateText, style)
+	jsonRn = templates.NewJSONRenderer()
 
 	// TODO(bzz):
 	//  - configure the log level, to include requests in debug
@@ -140,7 +144,12 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// render
-	htmlRn.Render(w, stats, urTitles, nil)
+	if _, ok := r.URL.Query()["json"]; ok {
+		w.Header().Set("Content-Type", "application/json")
+		jsonRn.Render(w, stats, urTitles, nil)
+	} else {
+		htmlRn.Render(w, stats, urTitles, nil)
+	}
 }
 
 func handleLabels(w http.ResponseWriter, r *http.Request) {
