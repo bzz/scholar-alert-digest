@@ -85,7 +85,7 @@ go run main.go -refs
 ```
 
 # Web server
-Web UI that exposes basic HTML report generation to multiple concurrent users.
+The Web UI exposes HTML report generation to multiple concurrent users.
 
 ## Configure
 It does not support the same OAuth client credentials as CLI from `credentials.json`.
@@ -111,7 +111,7 @@ The report generation is exposed though a web server that can be started with
 go run ./cmd/server [-compact]
 ```
 
-to spin up a server on http://localhost:8080
+to spin up a server at http://localhost:8080
 
 Start by visiting http://localhost:8080/login to get the user OAuth access token.
 Visit http://localhost:8080/labels to chose your label name.
