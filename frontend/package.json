@@ -4,6 +4,8 @@
   "description": "front-end app for scholar alert digest",
   "main": "src/index.js",
   "scripts": {
+    "build": "webpack",
+    "dev": "webpack serve",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -11,5 +13,18 @@
     "name": "Ilya Malyanov",
     "url": "https://github.com/heruka-urgyen"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@babel/core": "^7.12.3",
+    "@babel/preset-env": "^7.12.1",
+    "@babel/preset-react": "^7.12.1",
+    "babel-loader": "^8.1.0",
+    "css-loader": "^5.0.0",
+    "html-webpack-plugin": "^4.5.0",
+    "regenerator-runtime": "^0.13.7",
+    "style-loader": "^2.0.0",
+    "webpack": "^5.1.3",
+    "webpack-cli": "^4.1.0",
+    "webpack-dev-server": "^3.11.0"
+  }
 }
