@@ -145,7 +145,7 @@ func main() {
 
 	log.Printf("rendering %d papers", len(unreadPapers)+len(readPapers))
 	if *outputJSON {
-		r = templates.NewJSONRenderer()
+		r = templates.NewJSONLRenderer()
 	} else if *outputHTML {
 		r = templates.NewHTMLRenderer(template, style)
 	} else {

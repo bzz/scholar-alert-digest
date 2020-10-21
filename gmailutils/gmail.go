@@ -21,11 +21,13 @@ package gmailutils
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -182,6 +184,21 @@ func searchAndFetchConcurent(ctx context.Context, srv *gmail.Service, user, quer
 
 	log.Printf("%d messages fetched (took %.0f sec)", len(msgIDs), time.Since(start).Seconds())
 	return msgs, nil
+}
+
+// ReadFixturesJSON reads email messages from a given JSON file.
+func ReadFixturesJSON(name string) []*gmail.Message {
+	var msgs []*gmail.Message
+	log.Printf("reading emails from %s instead of fetching from Gmail", name)
+
+	f, err := os.Open(name)
+	if err != nil {
+		log.Fatalf("Unable to read email fixtures: %v", err)
+	}
+	defer f.Close()
+
+	json.NewDecoder(f).Decode(&msgs)
+	return msgs
 }
 
 // ModifyMsgsDelLabel batch-deletes a label from all the given messages.

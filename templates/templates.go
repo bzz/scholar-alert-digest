@@ -107,24 +107,60 @@ ul { list-style-type: none; margin: 0; padding: 0 0 0 20px; }
 `
 )
 
-// Renderer renders papers in a specific output format.
+// Renderer renders papers in one of the supported output formats: Markdown/HTML/JSON/JSONL.
 type Renderer interface {
 	Render(out io.Writer, st *papers.Stats, unread, read papers.AggPapers)
 }
 
-// JSONRenderer outputs JSON
-type JSONRenderer struct{}
+// JSONRenderer outputs JSON/JSONL formats.
+type JSONRenderer struct {
+	render func(io.Writer, *papers.Stats, papers.AggPapers, papers.AggPapers)
+}
 
-func NewJSONRenderer() Renderer { return &JSONRenderer{} }
-
+// Render papers in JSON/JSONL.
 func (r *JSONRenderer) Render(out io.Writer, st *papers.Stats, unread, read papers.AggPapers) {
-	log.Print("formatting gmail messages in JSON")
-	encoder := json.NewEncoder(out)
-	for _, title := range papers.SortedKeys(unread) {
-		encoder.Encode(unread[title])
+	r.render(out, st, unread, read)
+}
+
+// NewJSONRenderer factory for Renderer in JSON format.
+func NewJSONRenderer() Renderer {
+	return &JSONRenderer{
+		render: func(out io.Writer, st *papers.Stats, unread, read papers.AggPapers) {
+			log.Printf("formatting gmail messages in JSON")
+			t := []*papers.Paper{}
+			all := map[string][]*papers.Paper{"read": nil, "unread": nil}
+
+			for _, title := range papers.SortedKeys(read) {
+				t = append(t, read[title])
+			}
+			all["read"] = t
+			t = nil
+
+			for _, title := range papers.SortedKeys(unread) {
+				t = append(t, unread[title])
+			}
+			all["unread"] = t
+			t = nil
+
+			encoder := json.NewEncoder(out)
+			encoder.Encode(all)
+		},
 	}
-	for _, title := range papers.SortedKeys(read) {
-		encoder.Encode(read[title])
+}
+
+// NewJSONLRenderer factory for Renderer in JSONL format.
+func NewJSONLRenderer() Renderer {
+	return &JSONRenderer{
+		render: func(out io.Writer, st *papers.Stats, unread, read papers.AggPapers) {
+			log.Print("formatting gmail messages in JSONL")
+			encoder := json.NewEncoder(out)
+			for _, title := range papers.SortedKeys(unread) {
+				encoder.Encode(unread[title])
+			}
+			for _, title := range papers.SortedKeys(read) {
+				encoder.Encode(read[title])
+			}
+		},
 	}
 }
 
