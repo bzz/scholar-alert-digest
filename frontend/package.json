@@ -1,0 +1,15 @@
+{
+  "name": "scholar-alert-digest-frontend",
+  "version": "0.0.1",
+  "description": "front-end app for scholar alert digest",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": {
+    "name": "Ilya Malyanov",
+    "url": "https://github.com/heruka-urgyen"
+  },
+  "license": "Apache-2.0"
+}
