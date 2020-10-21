@@ -15,6 +15,11 @@
     "url": "https://github.com/heruka-urgyen"
   },
   "license": "Apache-2.0",
+  "dependencies": {
+    "prop-types": "^15.7.2",
+    "react": "^17.0.0",
+    "react-dom": "^17.0.0"
+  },
   "devDependencies": {
     "@babel/core": "^7.12.3",
     "@babel/preset-env": "^7.12.1",
