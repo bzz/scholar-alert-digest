@@ -124,7 +124,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// find and fetch the messages
+	// find and fetch email messages
 	var urMsgs []*gmail.Message
 	if !*test { // TODO(bzz): refactor, replace \w polymorphism though interface for fetching messages
 		var err error
