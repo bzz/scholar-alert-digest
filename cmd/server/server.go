@@ -150,6 +150,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	// render
 	if _, ok := r.URL.Query()["json"]; ok {
 		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*") // enable CORS
 		jsonRn.Render(w, stats, urTitles, nil)
 	} else {
 		htmlRn.Render(w, stats, urTitles, nil)
