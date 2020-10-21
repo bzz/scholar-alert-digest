@@ -1,0 +1,13 @@
+/********** Main **********/
+
+.metadata {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.metadata li {
+  display: inline;
+  margin-right: 0.5rem;
+}
+
