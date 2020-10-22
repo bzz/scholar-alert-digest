@@ -20,7 +20,9 @@ module.exports = {
     port: 9000,
   },
   plugins: [
-    new HtmlWebpackPlugin(),
+    new HtmlWebpackPlugin({
+      favicon: "./favicon.png",
+    }),
   ],
   module: {
     rules: [
