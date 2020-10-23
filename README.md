@@ -4,12 +4,28 @@
 Simplifies scientific paper discovery by aggregating all unread emails under
 a Gmail label from the Google Scholar alerts, grouping papers by title and producing a report ([Markdown](https://gist.github.com/bzz/1e8445f71db03a7d57d94147279ee09f)/[HTML](https://gist.github.com/bzz/e1e3ef3e0cdabc254f4e75bfa5511bcb)/[JSON](https://gist.github.com/bzz/4feeec459bcd1ec21f919eaeb163ac7a)).
 
-# Workflow
+* [How to use](#how-to-use)
+* [Install](#install)
+* [CLI](#cli)
+    * [Configure](#configure)
+    * [Run](#run)
+* [Web server](#web-server)
+    * [Configure](#configure-1)
+    * [Test](#test)
+    * [Run](#run-1)
+* [License](#license)
 
- 1. Search on Google Scholar for a paper of author
+# How to use
+
+To use this tool for generating a report on new papers from Google Scholar, do the following:
+
+ 1. Search on Google Scholar for a paper of an author
  2. Create an Alert (for citations, new or similar publications)
  3. Create a Gmail filter, moving all those emails under a dedicated Label
- 4. Run this tool to get an aggregated report (in Markdown or HTML) of all the papers from unread emails
+ 4. Run this tool to get an aggregated report (in Markdown or HTML) of all the papers from the unread emails
+
+For more details, please reffer to the [documentatino](/docs).
+
 
 # Install
 
