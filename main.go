@@ -107,7 +107,7 @@ func main() {
 
 	if *onlySubj {
 		log.Print("only extracting the subjects from scholar emails")
-		query := fmt.Sprintf("label:%s is:unread from:scholaralerts-noreply", *gmailLabel)
+		query := fmt.Sprintf("label:%s from:scholaralerts-noreply is:unread", *gmailLabel)
 		if *read {
 			query = strings.TrimSuffix(query, " is:unread")
 		}
