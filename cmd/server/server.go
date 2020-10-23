@@ -125,7 +125,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// find and fetch email messages
-	var urMsgs []*gmail.Message
+	var rMsgs, urMsgs []*gmail.Message
 	if !*test { // TODO(bzz): refactor, replace \w polymorphism though interface for fetching messages
 		var err error
 		srv, _ := gmail.New(oauthCfg.Client(r.Context(), tok)) // ignore err as client != nil
@@ -138,7 +138,8 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		urMsgs = gmailutils.ReadFixturesJSON("./fixtures/emails.json")
+		urMsgs = gmailutils.ReadFixturesJSON("./fixtures/unread.json")
+		rMsgs = gmailutils.ReadFixturesJSON("./fixtures/read.json")
 	}
 
 	// aggregate
@@ -147,11 +148,16 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%d errors found, extracting the papers", stats.Errs)
 	}
 
+	_, rTitles := papers.ExtractAndAggPapersFromMsgs(rMsgs, true, true)
+	if stats.Errs != 0 {
+		log.Printf("%d errors found, extracting the papers", stats.Errs)
+	}
+
 	// render
 	if _, ok := r.URL.Query()["json"]; ok {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*") // enable CORS
-		jsonRn.Render(w, stats, urTitles, nil)
+		jsonRn.Render(w, stats, urTitles, rTitles)
 	} else {
 		htmlRn.Render(w, stats, urTitles, nil)
 	}

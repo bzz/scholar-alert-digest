@@ -26,6 +26,13 @@ or run it directly from the clone of the sources using `go` command, as describe
 
 CLI tool for Markdown/HTML report generation.
 
+## Test
+It is possible to test it locally, without Gmail app configuration from below, by using emails from `./fixtures` by running:
+
+```
+go run main.go -test
+```
+
 ## Configure
 
 Turn on Gmail API & download `credentials.json` following [these steps](https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the).</br>
@@ -87,6 +94,13 @@ go run main.go -refs
 # Web server
 The Web UI exposes HTML report generation to multiple concurrent users.
 
+## Test
+It is possible to test it locally, without Gmail app configuration from below, by using emails from `./fixtures` by running:
+
+```
+go run ./cmd/server -test
+```
+
 ## Configure
 It does not support the same OAuth client credentials as CLI from `credentials.json`.
 
@@ -104,13 +118,6 @@ export SAD_GOOGLE_SECRET='<client secret>'
 
 You do not need to pass the label name on the startup as it can be chosen at
 runtime at [/labels](http://localhost:8080/labels).
-
-## Test
-It is possible to test server locally without Gmail app configuration, using emails from `./fixtures` with
-
-```
-go run ./cmd/server -test
-```
 
 ## Run
 The report generation is exposed though a web server that can be started with

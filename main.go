@@ -24,6 +24,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -57,6 +58,7 @@ The -mark flag will mark all the aggregated emails as read in Gmail.
 The -read flag will include a new section in the report, aggregating all read emails.
 The -authors flag will include paper authors in the report.
 The -refs flag will add links to all email messages that mention each paper.
+The -upd-test flag will write emails to ./fixtures/emails.json and quit.
 `
 )
 
@@ -75,6 +77,7 @@ var (
 	refs       = flag.Bool("refs", false, "include orignin references to Gmail messages in report")
 	onlySubj   = flag.Bool("subj", false, "aggregate only email subjects")
 	concurReq  = flag.Int("n", 10, "number of concurent Gmail API requests")
+	updTest    = flag.Bool("upd-test", false, "save all emails to ./fixtures/*, to be used with the -test later")
 )
 
 func usage() {
@@ -104,7 +107,7 @@ func main() {
 
 	if *onlySubj {
 		log.Print("only extracting the subjects from scholar emails")
-		query := fmt.Sprintf("label:%s is:unread from:scholaralerts-noreply", *gmailLabel)
+		query := fmt.Sprintf("label:%s from:scholaralerts-noreply is:unread", *gmailLabel)
 		if *read {
 			query = strings.TrimSuffix(query, " is:unread")
 		}
@@ -127,15 +130,21 @@ func main() {
 	unreadStats, unreadPapers := papers.ExtractAndAggPapersFromMsgs(urMsgs, *authors, *refs)
 
 	readStats := &papers.Stats{}
+	var rMsgs []*gmail.Message
 	var readPapers papers.AggPapers
 	if *read {
-		rMsgs, err := gmailutils.FetchConcurent(context.Background(), srv, user, fmt.Sprintf("label:%s is:read", *gmailLabel), *concurReq)
+		rMsgs, err = gmailutils.FetchConcurent(context.Background(), srv, user, fmt.Sprintf("label:%s is:read", *gmailLabel), *concurReq)
 		if err != nil {
 			log.Fatal("Failed to fetch messages from Gmail")
 		}
 		readStats, readPapers = papers.ExtractAndAggPapersFromMsgs(rMsgs, *authors, *refs)
 	}
 
+	if *updTest {
+		saveEmails("./fixtures/unread.json", urMsgs)
+		saveEmails("./fixtures/read.json", rMsgs)
+		return
+	}
 	// render papers
 	var r templates.Renderer
 	template, style := templates.MdTemplText, ""
@@ -164,6 +173,17 @@ func main() {
 	if totalErrCnt != 0 {
 		log.Printf("Errors: %d\n", totalErrCnt)
 	}
+}
+
+func saveEmails(path string, emails []*gmail.Message) {
+	log.Printf("Saving emails to fixtures at: %s\n", path)
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		log.Fatalf("Unable to save email fixtures: %v", err)
+	}
+	defer f.Close()
+	json.NewEncoder(f).Encode(append(emails))
+
 }
 
 func printSubjects(msgs []*gmail.Message) {
