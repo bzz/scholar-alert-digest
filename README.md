@@ -24,7 +24,7 @@ To use this tool for generating a report on new papers from Google Scholar, do t
  3. Create a Gmail filter, moving all those emails under a dedicated Label
  4. Run this tool to get an aggregated report (in Markdown or HTML) of all the papers from the unread emails
 
-For more details, please reffer to the [documentatino](/docs).
+For more details, please reffer to the [documentation](/docs).
 
 
 # Install
@@ -71,13 +71,13 @@ go run main.go
 ```
 
 ## Run
-In order to output rendered HTML or JSON instead of the default Markdown, use
+To output rendered HTML or JSON instead of the default Markdown, use
 ```
 go run main.go -html
 go run main.go -json
 ```
 
-To mark all emails that were aggregated in current report as read, use
+To mark all emails that were aggregated in the current report as read, use
 ```
 go run main.go -mark
 ```
@@ -92,7 +92,7 @@ To only aggregate the email subjects do
 go run main.go -subj | uniq -c | sort -dr
 ```
 
-There is an optional more compact report template that may be useful for a big number of papers:
+There is an optional more compact report template that may be useful for a large number of papers:
 ```
 go run main.go -compact
 ```
@@ -107,7 +107,7 @@ To include references to original email into the report, do:
 go run main.go -refs
 ```
 
-# Web server
+# Webserver
 The Web UI exposes HTML report generation to multiple concurrent users.
 
 ## Test
@@ -136,7 +136,7 @@ You do not need to pass the label name on the startup as it can be chosen at
 runtime at [/labels](http://localhost:8080/labels).
 
 ## Run
-The report generation is exposed though a web server that can be started with
+The report generation is exposed through a web server that can be started with
 ```
 go run ./cmd/server [-compact]
 ```
