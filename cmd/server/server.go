@@ -143,23 +143,23 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// aggregate
-	stats, urTitles := papers.ExtractAndAggPapersFromMsgs(urMsgs, true, true)
-	if stats.Errs != 0 {
-		log.Printf("%d errors found, extracting the papers", stats.Errs)
+	urStats, urTitles := papers.ExtractAndAggPapersFromMsgs(urMsgs, true, true)
+	if urStats.Errs != 0 {
+		log.Printf("%d errors found, extracting the papers", urStats.Errs)
 	}
 
-	_, rTitles := papers.ExtractAndAggPapersFromMsgs(rMsgs, true, true)
-	if stats.Errs != 0 {
-		log.Printf("%d errors found, extracting the papers", stats.Errs)
+	rStats, rTitles := papers.ExtractAndAggPapersFromMsgs(rMsgs, true, true)
+	if rStats.Errs != 0 {
+		log.Printf("%d errors found, extracting the papers", rStats.Errs)
 	}
 
 	// render
 	if _, ok := r.URL.Query()["json"]; ok {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Access-Control-Allow-Origin", "*") // enable CORS
-		jsonRn.Render(w, stats, urTitles, rTitles)
+		jsonRn.Render(w, urStats, urTitles, rTitles)
 	} else {
-		htmlRn.Render(w, stats, urTitles, nil)
+		htmlRn.Render(w, urStats, urTitles, nil)
 	}
 }
 
