@@ -76,6 +76,7 @@ var ( // configuration
 var ( // CLI
 	compact = flag.Bool("compact", false, "output report in compact format (>100 papers)")
 	test    = flag.Bool("test", false, "read emails from ./fixtures/* instead of real Gmail")
+	cors    = flag.Bool("cors", false, "enable CORS for all endpoints (usefull for development)")
 	// TODO(bzz): add -read support + equivalent per-user config option (cookies)
 )
 
@@ -105,7 +106,11 @@ func main() {
 	mux.HandleFunc("/login", handleLogin)
 	mux.HandleFunc("/login/authorized", handleAuth)
 
-	http.ListenAndServe(addr, sessionMiddleware(mux))
+	mid := sessionMiddleware(mux)
+	if *cors {
+		mid = corsMiddleware(mux)
+	}
+	http.ListenAndServe(addr, mid)
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
@@ -156,7 +161,6 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	// render
 	if _, ok := r.URL.Query()["json"]; ok {
 		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Access-Control-Allow-Origin", "*") // enable CORS
 		jsonRn.Render(w, urStats, urTitles, rTitles)
 	} else {
 		htmlRn.Render(w, urStats, urTitles, nil)
@@ -259,5 +263,13 @@ func sessionMiddleware(next http.Handler) http.Handler {
 		ctx := token.NewSessionContext(r.Context(), r.Cookies())
 		ctx = token.NewLabelContext(ctx, r.Cookies())
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// corsMiddleware enables CORS.
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		next.ServeHTTP(w, r)
 	})
 }
