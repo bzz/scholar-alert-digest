@@ -127,20 +127,30 @@ func NewJSONRenderer() Renderer {
 	return &JSONRenderer{
 		render: func(out io.Writer, st *papers.Stats, unread, read papers.AggPapers) {
 			log.Printf("formatting gmail messages in JSON")
-			t := []*papers.Paper{}
-			all := map[string][]*papers.Paper{"read": nil, "unread": nil}
 
+			var sr []*papers.Paper
 			for _, title := range papers.SortedKeys(read) {
-				t = append(t, read[title])
+				sr = append(sr, read[title])
 			}
-			all["read"] = t
-			t = nil
 
+			var su []*papers.Paper
 			for _, title := range papers.SortedKeys(unread) {
-				t = append(t, unread[title])
+				su = append(su, unread[title])
 			}
-			all["unread"] = t
-			t = nil
+
+			all := map[string]interface{}{
+				"read": map[string]interface{}{
+					"papers": sr,
+				},
+				"unread": map[string]interface{}{
+					"papers": su,
+					"stats": map[string]interface{}{
+						"time":     time.Now().Format(time.RFC3339),
+						"messages": st.Msgs,
+						"papers":   st.Titles,
+					},
+				},
+			}
 
 			encoder := json.NewEncoder(out)
 			encoder.Encode(all)
