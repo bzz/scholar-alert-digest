@@ -128,12 +128,12 @@ func NewJSONRenderer() Renderer {
 		render: func(out io.Writer, st *papers.Stats, unread, read papers.AggPapers) {
 			log.Printf("formatting gmail messages in JSON")
 
-			var sr []*papers.Paper
+			sr := []*papers.Paper{}
 			for _, title := range papers.SortedKeys(read) {
 				sr = append(sr, read[title])
 			}
 
-			var su []*papers.Paper
+			su := []*papers.Paper{}
 			for _, title := range papers.SortedKeys(unread) {
 				su = append(su, unread[title])
 			}
