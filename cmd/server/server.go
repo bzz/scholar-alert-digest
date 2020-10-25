@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"html/template"
@@ -16,6 +19,7 @@ import (
 	"github.com/bzz/scholar-alert-digest/templates"
 
 	"github.com/go-chi/chi"
+	"github.com/go-chi/render"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/gmail/v1"
@@ -109,6 +113,21 @@ func main() {
 	r.Post("/labels", handleLabelsWrite)
 	r.Get("/login", handleLogin)
 	r.Get("/login/authorized", handleAuth)
+
+	r.Route("/json", func(j chi.Router) {
+		j.Use(render.SetContentType(render.ContentTypeJSON))
+		if !*test {
+			j.Use(tokenCtx) // read cookies, else - advise authCode URL to frontend
+			j.Use(labelCtx) // read cookies, else - advise /labels URL to frontend (only if not on /labels)
+		}
+		if *cors {
+			j.Use(middlewareCORS)
+		}
+
+		j.Get("/labels", listLabels)
+		j.Get("/messages", listMessages)
+		// j.Get("/papers", handlePaperssJSON)
+	})
 
 	http.ListenAndServe(addr, r)
 }
@@ -267,10 +286,118 @@ func tokenAndLabelCookiesCtx(next http.Handler) http.Handler {
 	})
 }
 
-// corsMiddleware enables CORS.
-func corsMiddleware(next http.Handler) http.Handler {
+//// JSON
+
+// middlewareCORS enables CORS.
+func middlewareCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		next.ServeHTTP(w, r)
+	})
+}
+
+type contextKey string
+
+const (
+	tokenKey contextKey = "token"
+	labelKey contextKey = "label"
+)
+
+func listLabels(w http.ResponseWriter, r *http.Request) {
+	tok := r.Context().Value(tokenKey).(*oauth2.Token)
+	client := oauthCfg.Client(r.Context(), tok)
+	labelsResp, err := gmailutils.FetchLabels(r.Context(), client)
+	if err != nil {
+		// TODO pass Error to frontend
+		// render.Render(w, r, ErrNotFound)
+		log.Printf("Unable to retrieve all labels: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	var labels []string // user labels, sorted
+	for _, l := range labelsResp.Labels {
+		if l.Type == "system" {
+			continue
+		}
+		labels = append(labels, l.Name)
+	}
+	sort.Strings(labels)
+
+	// TODO
+	json.NewEncoder(w).Encode(map[string]interface{}{"labels": labels})
+	// render.RenderList(w, r, labels)
+}
+
+func listMessages(w http.ResponseWriter, r *http.Request) {
+
+}
+
+type ErrResponse struct {
+	Err            string `json:",omitempty"` // low-level runtime error
+	HTTPStatusCode int    `json:"-"`          // http response status code
+
+	StatusText string `json:"status"` // user-level status message
+	Redirect   string `json:",omitempty"`
+}
+
+func tokenCtx(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		// read from cookies
+		var tokenCookie *http.Cookie
+		for _, c := range r.Cookies() {
+			if c.Name == string(tokenKey) {
+				tokenCookie = c
+				break
+			}
+		}
+
+		if tokenCookie == nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(ErrResponse{
+				StatusText: "Not authorized",
+				Redirect:   oauthCfg.AuthCodeURL("scholar"),
+			})
+			return
+		}
+
+		// decode 	64
+		data, err := base64.StdEncoding.DecodeString(tokenCookie.Value)
+		if err != nil {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			json.NewEncoder(w).Encode(ErrResponse{
+				Err:        err.Error(),
+				StatusText: "Unable to decode base64 cookie: " + string(tokenKey),
+			})
+			return
+		}
+
+		// decode JSON
+		tok := &oauth2.Token{}
+		err = json.NewDecoder(bytes.NewReader(data)).Decode(tok)
+		if err != nil {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			json.NewEncoder(w).Encode(ErrResponse{
+				Err:        err.Error(),
+				StatusText: "Unable to decode JSON token: " + string(data),
+			})
+			return
+		}
+
+		ctx = context.WithValue(ctx, tokenKey, tok)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+func labelCtx(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		// TODO
+		// read from cookies, decode base64
+		var val string
+
+		ctx = context.WithValue(ctx, labelKey, val)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
