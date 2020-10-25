@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"html/template"
@@ -15,11 +16,11 @@ import (
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 	"github.com/bzz/scholar-alert-digest/gmailutils/token"
+	js "github.com/bzz/scholar-alert-digest/json"
 	"github.com/bzz/scholar-alert-digest/papers"
 	"github.com/bzz/scholar-alert-digest/templates"
 
 	"github.com/go-chi/chi"
-	"github.com/go-chi/render"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/gmail/v1"
@@ -115,18 +116,17 @@ func main() {
 	r.Get("/login/authorized", handleAuth)
 
 	r.Route("/json", func(j chi.Router) {
-		j.Use(render.SetContentType(render.ContentTypeJSON))
-		if !*test {
-			j.Use(tokenCtx) // read cookies, else - advise authCode URL to frontend
-			j.Use(labelCtx) // read cookies, else - advise /labels URL to frontend (only if not on /labels)
-		}
+		j.Use(setContentType("application/json"))
 		if *cors {
-			j.Use(middlewareCORS)
+			j.Use(setCORS)
+		}
+		if !*test {
+			j.Use(tokenCtx)
 		}
 
 		j.Get("/labels", listLabels)
-		j.Get("/messages", listMessages)
-		// j.Get("/papers", handlePaperssJSON)
+		j.With(labelCtx).Get("/messages/{labelSlug}", listMessages)
+		// j.Get("/papers", listPapers)
 	})
 
 	http.ListenAndServe(addr, r)
@@ -288,8 +288,17 @@ func tokenAndLabelCookiesCtx(next http.Handler) http.Handler {
 
 //// JSON
 
-// middlewareCORS enables CORS.
-func middlewareCORS(next http.Handler) http.Handler {
+func setContentType(contentType string) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", contentType)
+			next.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+func setCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		next.ServeHTTP(w, r)
@@ -297,6 +306,17 @@ func middlewareCORS(next http.Handler) http.Handler {
 }
 
 type contextKey string
+
+func (k contextKey) readFrom(cookies []*http.Cookie) *http.Cookie {
+	var cookie *http.Cookie
+	for _, c := range cookies {
+		if c.Name == string(k) {
+			cookie = c
+			break
+		}
+	}
+	return cookie
+}
 
 const (
 	tokenKey contextKey = "token"
@@ -308,10 +328,7 @@ func listLabels(w http.ResponseWriter, r *http.Request) {
 	client := oauthCfg.Client(r.Context(), tok)
 	labelsResp, err := gmailutils.FetchLabels(r.Context(), client)
 	if err != nil {
-		// TODO pass Error to frontend
-		// render.Render(w, r, ErrNotFound)
-		log.Printf("Unable to retrieve all labels: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
+		js.ErrNotFound(w, err, "Unable to retrieve labels from Gmail")
 		return
 	}
 
@@ -320,69 +337,57 @@ func listLabels(w http.ResponseWriter, r *http.Request) {
 		if l.Type == "system" {
 			continue
 		}
-		labels = append(labels, l.Name)
+		labels = append(labels, gmailutils.FormatAsID(l.Name))
 	}
 	sort.Strings(labels)
 
-	// TODO
 	json.NewEncoder(w).Encode(map[string]interface{}{"labels": labels})
+	// TODO: better rendering
 	// render.RenderList(w, r, labels)
 }
 
 func listMessages(w http.ResponseWriter, r *http.Request) {
+	label := r.Context().Value(labelKey).(string)
+	tok := r.Context().Value(tokenKey).(*oauth2.Token)
 
-}
+	// TODO: refactor out and suppor -test
+	srv, _ := gmail.New(oauthCfg.Client(r.Context(), tok)) // ignore err as client != nil
+	query := fmt.Sprintf("label:%s is:unread", label)
+	urMsgs, err := gmailutils.FetchConcurent(r.Context(), srv, user, query, concurReq)
+	if err != nil {
+		js.ErrFailedDependency(w, err, "failed to fetch messages from Gmail")
+		return
+	}
 
-type ErrResponse struct {
-	Err            string `json:",omitempty"` // low-level runtime error
-	HTTPStatusCode int    `json:"-"`          // http response status code
+	// aggregate
+	urStats, urTitles := papers.ExtractAndAggPapersFromMsgs(urMsgs, true, true)
+	if urStats.Errs != 0 {
+		log.Printf("%d errors found, extracting the papers", urStats.Errs)
+	}
 
-	StatusText string `json:"status"` // user-level status message
-	Redirect   string `json:",omitempty"`
+	jsonRn.Render(w, urStats, urTitles, nil)
 }
 
 func tokenCtx(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		// read from cookies
-		var tokenCookie *http.Cookie
-		for _, c := range r.Cookies() {
-			if c.Name == string(tokenKey) {
-				tokenCookie = c
-				break
-			}
-		}
-
+		tokenCookie := tokenKey.readFrom(r.Cookies())
 		if tokenCookie == nil {
-			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(ErrResponse{
-				StatusText: "Not authorized",
-				Redirect:   oauthCfg.AuthCodeURL("scholar"),
-			})
+			js.ErrUnauthorized(w, oauthCfg.AuthCodeURL("scholar"))
 			return
 		}
 
-		// decode 	64
 		data, err := base64.StdEncoding.DecodeString(tokenCookie.Value)
 		if err != nil {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			json.NewEncoder(w).Encode(ErrResponse{
-				Err:        err.Error(),
-				StatusText: "Unable to decode base64 cookie: " + string(tokenKey),
-			})
+			js.ErrUnprocessable(w, err, "Unable to decode base64 cookie: "+string(tokenKey))
 			return
 		}
 
-		// decode JSON
 		tok := &oauth2.Token{}
 		err = json.NewDecoder(bytes.NewReader(data)).Decode(tok)
 		if err != nil {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			json.NewEncoder(w).Encode(ErrResponse{
-				Err:        err.Error(),
-				StatusText: "Unable to decode JSON token: " + string(data),
-			})
+			js.ErrUnprocessable(w, err, "Unable to decode JSON token: "+string(data))
 			return
 		}
 
@@ -390,14 +395,19 @@ func tokenCtx(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
 func labelCtx(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		// TODO
-		// read from cookies, decode base64
-		var val string
+		param := "labelSlug"
+		var labelSlug string
+		// read labelSlug from request URL param
+		if labelSlug = chi.URLParam(r, param); labelSlug == "" {
+			js.ErrNotFound(w, errors.New(""), "missing request param: "+param)
+			return
+		}
 
-		ctx = context.WithValue(ctx, labelKey, val)
+		ctx = context.WithValue(ctx, labelKey, labelSlug)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

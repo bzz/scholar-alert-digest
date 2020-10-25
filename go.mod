@@ -8,7 +8,6 @@ require (
 	github.com/antchfx/xpath v1.1.2 // indirect
 	github.com/cheggaaa/pb/v3 v3.0.3
 	github.com/go-chi/chi v4.1.2+incompatible
-	github.com/go-chi/render v1.0.1
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/google/go-cmp v0.3.1 // indirect
 	github.com/stretchr/testify v1.4.0
