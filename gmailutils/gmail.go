@@ -85,11 +85,9 @@ func getClient(config *oauth2.Config, tokFile string) *http.Client {
 	return config.Client(context.Background(), tok)
 }
 
-// FetchLabels fetches the list of labels, as returned by Gmail.
-func FetchLabels(ctx context.Context, oauthCfg *oauth2.Config, token *oauth2.Token) (
+// FetchLabels fetches the list of labels, as returned by Gmail using authorized http Client.
+func FetchLabels(ctx context.Context, client *http.Client) (
 	*gmail.ListLabelsResponse, error) { // TODO(bzz): extract all args to a struct and make it a method
-	// get an authorized Gmail API client
-	client := oauthCfg.Client(ctx, token)
 	srv, err := gmail.New(client)
 	if err != nil {
 		return nil, err

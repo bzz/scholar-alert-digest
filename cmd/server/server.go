@@ -15,6 +15,7 @@ import (
 	"github.com/bzz/scholar-alert-digest/papers"
 	"github.com/bzz/scholar-alert-digest/templates"
 
+	"github.com/go-chi/chi"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/gmail/v1"
@@ -99,18 +100,17 @@ func main() {
 	log.Printf("starting the web server at http://%s", addr)
 	defer log.Printf("stoping the web server")
 
-	// TODO(bzz): migrate to chi-router
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handleRoot)
-	mux.HandleFunc("/labels", handleLabels)
-	mux.HandleFunc("/login", handleLogin)
-	mux.HandleFunc("/login/authorized", handleAuth)
+	r := chi.NewRouter()
+	r.Use(tokenAndLabelCookiesCtx)
+	// r.Use(middleware.Logger)
 
-	mid := sessionMiddleware(mux)
-	if *cors {
-		mid = corsMiddleware(mux)
-	}
-	http.ListenAndServe(addr, mid)
+	r.Get("/", handleRoot)
+	r.Get("/labels", handleLabelsRead)
+	r.Post("/labels", handleLabelsWrite)
+	r.Get("/login", handleLogin)
+	r.Get("/login/authorized", handleAuth)
+
+	http.ListenAndServe(addr, r)
 }
 
 func handleRoot(w http.ResponseWriter, r *http.Request) {
@@ -135,7 +135,7 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 		var err error
 		srv, _ := gmail.New(oauthCfg.Client(r.Context(), tok)) // ignore err as client != nil
 		query := fmt.Sprintf("label:%s is:unread", gmailLabel)
-		urMsgs, err = gmailutils.FetchConcurent(context.Background(), srv, user, query, concurReq)
+		urMsgs, err = gmailutils.FetchConcurent(r.Context(), srv, user, query, concurReq)
 		if err != nil {
 			// TODO(bzz): token expiration looks ugly here and must be handled elsewhere
 			w.WriteHeader(http.StatusServiceUnavailable)
@@ -167,24 +167,24 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleLabels(w http.ResponseWriter, r *http.Request) {
+func handleLabelsRead(w http.ResponseWriter, r *http.Request) {
 	tok, authorized := token.FromContext(r.Context())
 	if !authorized { // TODO(bzz): move this to middleware
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
 
-	switch r.Method {
-	case http.MethodGet:
-		fetchLabelsAndServeForm(w, r, tok)
-	case http.MethodPost:
-		saveLabelToCookies(w, r)
-		http.Redirect(w, r, "/", http.StatusFound)
-	}
+	fetchLabelsAndServeForm(w, r, tok)
+}
+
+func handleLabelsWrite(w http.ResponseWriter, r *http.Request) {
+	saveLabelToCookies(w, r)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func fetchLabelsAndServeForm(w http.ResponseWriter, r *http.Request, tok *oauth2.Token) {
-	labelsResp, err := gmailutils.FetchLabels(r.Context(), oauthCfg, tok)
+	client := oauthCfg.Client(r.Context(), tok)
+	labelsResp, err := gmailutils.FetchLabels(r.Context(), client)
 	if err != nil {
 		log.Printf("Unable to retrieve all labels: %v", err)
 		w.WriteHeader(http.StatusBadRequest)
@@ -241,6 +241,7 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 
 	// exchange the received code for a bearer token
 	code := r.FormValue("code")
+	// FIXME(bzz): validate that r.FormValue("state") is the same as in AuthCodeURL()
 	tok, err := oauthCfg.Exchange(r.Context(), code)
 	if err != nil {
 		log.Printf("Unable to exchange the code %q for token: %v", code, err)
@@ -256,8 +257,8 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
-// sessionMiddleware reads token from session cookie, saves it into the Context.
-func sessionMiddleware(next http.Handler) http.Handler {
+// tokenAndLabelCookiesCtx reads token from request cookie and saves it to the Context.
+func tokenAndLabelCookiesCtx(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Println(r.Method, "-", r.RequestURI /*, r.Cookies()*/) // TODO(bzz): make cookies debug level only
 		ctx := token.NewSessionContext(r.Context(), r.Cookies())
