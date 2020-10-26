@@ -348,15 +348,21 @@ func listLabels(w http.ResponseWriter, r *http.Request) {
 
 func listMessages(w http.ResponseWriter, r *http.Request) {
 	label := r.Context().Value(labelKey).(string)
-	tok := r.Context().Value(tokenKey).(*oauth2.Token)
 
-	// TODO: refactor out and suppor -test
-	srv, _ := gmail.New(oauthCfg.Client(r.Context(), tok)) // ignore err as client != nil
-	query := fmt.Sprintf("label:%s is:unread", label)
-	urMsgs, err := gmailutils.FetchConcurent(r.Context(), srv, user, query, concurReq)
-	if err != nil {
-		js.ErrFailedDependency(w, err, "failed to fetch messages from Gmail")
-		return
+	var err error
+	var urMsgs, rMsgs []*gmail.Message
+	if !*test { // TODO(bzz): refactor, replace \w polymorphism though interface for fetching messages
+		tok := r.Context().Value(tokenKey).(*oauth2.Token)
+		srv, _ := gmail.New(oauthCfg.Client(r.Context(), tok)) // ignore err as client != nil
+		query := fmt.Sprintf("label:%s is:unread", label)
+		urMsgs, err = gmailutils.FetchConcurent(r.Context(), srv, user, query, concurReq)
+		if err != nil {
+			js.ErrFailedDependency(w, err, "failed to fetch messages from Gmail")
+			return
+		}
+	} else {
+		urMsgs = gmailutils.ReadFixturesJSON("./fixtures/unread.json")
+		rMsgs = gmailutils.ReadFixturesJSON("./fixtures/read.json")
 	}
 
 	// aggregate
@@ -365,7 +371,12 @@ func listMessages(w http.ResponseWriter, r *http.Request) {
 		log.Printf("%d errors found, extracting the papers", urStats.Errs)
 	}
 
-	jsonRn.Render(w, urStats, urTitles, nil)
+	rStats, rTitles := papers.ExtractAndAggPapersFromMsgs(rMsgs, true, true)
+	if rStats.Errs != 0 {
+		log.Printf("%d errors found, extracting the papers", urStats.Errs)
+	}
+
+	jsonRn.Render(w, urStats, urTitles, rTitles)
 }
 
 func tokenCtx(next http.Handler) http.Handler {
