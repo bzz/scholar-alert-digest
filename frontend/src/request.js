@@ -10,12 +10,14 @@ const req = method => (endpoint = "", payload) =>
       mode: "cors",
     },
   ))
-  .then(r => {
+  .then(async r => {
+    const json = await r.json()
+
     if (r.ok) {
-      return Promise.resolve(r.json())
+      return Promise.resolve(json)
     }
 
-    return Promise.reject(r.statusText)
+    return Promise.reject(Object.assign(r, {payload: json.error}))
   })
 
 export const get = req("GET")
