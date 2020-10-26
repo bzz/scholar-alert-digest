@@ -5,10 +5,10 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -125,7 +125,7 @@ func main() {
 		}
 
 		j.Get("/labels", listLabels)
-		j.With(labelCtx).Get("/messages/{labelSlug}", listMessages)
+		j.With(labelCtx).Post("/messages", listMessages)
 		// j.Get("/papers", listPapers)
 	})
 
@@ -399,15 +399,22 @@ func tokenCtx(next http.Handler) http.Handler {
 func labelCtx(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		param := "labelSlug"
-		var labelSlug string
-		// read labelSlug from request URL param
-		if labelSlug = chi.URLParam(r, param); labelSlug == "" {
-			js.ErrNotFound(w, errors.New(""), "missing request param: "+param)
+		data, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			js.ErrUnprocessable(w, err, "Failed to read request body")
 			return
 		}
 
-		ctx = context.WithValue(ctx, labelKey, labelSlug)
+		req := map[string]string{}
+		err = json.Unmarshal(data, &req)
+		if err != nil {
+			js.ErrUnprocessable(w, err, "Unable to decode JSON label: "+string(data))
+			return
+		}
+
+		if label, ok := req[string(labelKey)]; ok {
+			ctx = context.WithValue(ctx, labelKey, label)
+		}
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
