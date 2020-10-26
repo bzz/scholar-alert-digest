@@ -3,12 +3,9 @@ import {render} from "react-dom"
 
 import "github-markdown-css/github-markdown.css"
 import "style.css"
-import {get} from "request"
-import Main from "routes/Main"
+import App from "routes/App"
 
-get("?json").then(papers => {
-  render(
-    <Main papers={papers} />,
-    document.querySelector(".container"),
-  )
-})
+render(
+  <App />,
+  document.querySelector(".container"),
+)
