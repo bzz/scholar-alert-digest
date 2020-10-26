@@ -96,7 +96,10 @@ func main() {
 	}
 
 	if *listLabels {
-		gmailutils.PrintAllLabels(srv, user)
+		labels := gmailutils.PrintAllLabels(srv, user)
+		if *updTest {
+			saveLabels("./fixtures/labels.json", labels)
+		}
 		os.Exit(0)
 	}
 
@@ -183,7 +186,16 @@ func saveEmails(path string, emails []*gmail.Message) {
 	}
 	defer f.Close()
 	json.NewEncoder(f).Encode(append(emails))
+}
 
+func saveLabels(path string, labels []*gmail.Label) {
+	log.Printf("Saving emails to fixtures at: %s\n", path)
+	f, err := os.Create(path)
+	if err != nil {
+		log.Fatalf("Unable to save labels fixtures: %v", err)
+	}
+	defer f.Close()
+	json.NewEncoder(f).Encode(labels)
 }
 
 func printSubjects(msgs []*gmail.Message) {
