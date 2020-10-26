@@ -1,7 +1,7 @@
 import React from "react"
 import PropTypes from "prop-types"
 
-import "routes/routes.css"
+import "containers/containers.css"
 import Paper from "components/Paper"
 
 const Main = ({papers}) => (

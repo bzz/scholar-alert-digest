@@ -3,7 +3,7 @@ import {render} from "react-dom"
 
 import "github-markdown-css/github-markdown.css"
 import "style.css"
-import App from "routes/App"
+import App from "containers/App"
 
 render(
   <App />,

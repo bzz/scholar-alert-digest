@@ -3,7 +3,7 @@ import PropTypes from "prop-types"
 
 import {post} from "request"
 
-import "routes/routes.css"
+import "containers/containers.css"
 
 const handleSubmit = ({setLabel, setPapers}) => label => e => {
   e.preventDefault()

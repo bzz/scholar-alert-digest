@@ -2,8 +2,8 @@ import React, {useEffect, useReducer} from "react"
 import {get, post} from "request"
 import reducer, {actions} from "reducer"
 
-import Labels from "routes/Labels"
-import Main from "routes/Main"
+import Labels from "containers/Labels"
+import Main from "containers/Main"
 
 const App = () => {
   const [state, dispatch] = useReducer(reducer, {labels: []})
