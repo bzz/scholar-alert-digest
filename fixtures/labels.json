@@ -1,0 +1,110 @@
+[
+    {
+        "id": "CHAT",
+        "labelListVisibility": "labelHide",
+        "messageListVisibility": "hide",
+        "name": "CHAT",
+        "type": "system"
+    },
+    {
+        "id": "SENT",
+        "labelListVisibility": "labelShow",
+        "messageListVisibility": "hide",
+        "name": "SENT",
+        "type": "system"
+    },
+    {
+        "id": "INBOX",
+        "labelListVisibility": "labelShow",
+        "messageListVisibility": "hide",
+        "name": "INBOX",
+        "type": "system"
+    },
+    {
+        "id": "IMPORTANT",
+        "labelListVisibility": "labelHide",
+        "messageListVisibility": "hide",
+        "name": "IMPORTANT",
+        "type": "system"
+    },
+    {
+        "id": "TRASH",
+        "labelListVisibility": "labelHide",
+        "messageListVisibility": "hide",
+        "name": "TRASH",
+        "type": "system"
+    },
+    {
+        "id": "DRAFT",
+        "labelListVisibility": "labelShow",
+        "messageListVisibility": "hide",
+        "name": "DRAFT",
+        "type": "system"
+    },
+    {
+        "id": "SPAM",
+        "labelListVisibility": "labelHide",
+        "messageListVisibility": "hide",
+        "name": "SPAM",
+        "type": "system"
+    },
+    {
+        "id": "CATEGORY_FORUMS",
+        "labelListVisibility": "labelHide",
+        "messageListVisibility": "hide",
+        "name": "CATEGORY_FORUMS",
+        "type": "system"
+    },
+    {
+        "id": "CATEGORY_UPDATES",
+        "labelListVisibility": "labelHide",
+        "messageListVisibility": "hide",
+        "name": "CATEGORY_UPDATES",
+        "type": "system"
+    },
+    {
+        "id": "CATEGORY_PERSONAL",
+        "name": "CATEGORY_PERSONAL",
+        "type": "system"
+    },
+    {
+        "id": "CATEGORY_PROMOTIONS",
+        "labelListVisibility": "labelHide",
+        "messageListVisibility": "hide",
+        "name": "CATEGORY_PROMOTIONS",
+        "type": "system"
+    },
+    {
+        "id": "CATEGORY_SOCIAL",
+        "labelListVisibility": "labelHide",
+        "messageListVisibility": "hide",
+        "name": "CATEGORY_SOCIAL",
+        "type": "system"
+    },
+    {
+        "id": "STARRED",
+        "labelListVisibility": "labelShow",
+        "messageListVisibility": "hide",
+        "name": "STARRED",
+        "type": "system"
+    },
+    {
+        "id": "UNREAD",
+        "name": "UNREAD",
+        "type": "system"
+    },
+    {
+        "id": "Label_2886120821390607038",
+        "labelListVisibility": "labelShow",
+        "messageListVisibility": "show",
+        "name": "[ OSS ]/_ML-in-SE",
+        "type": "user"
+    },
+    {
+        "id": "Label_492399782024159418",
+        "labelListVisibility": "labelShow",
+        "messageListVisibility": "show",
+        "name": "_test-ML-in-SE",
+        "type": "user"
+    }
+]

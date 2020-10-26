@@ -85,11 +85,9 @@ func getClient(config *oauth2.Config, tokFile string) *http.Client {
 	return config.Client(context.Background(), tok)
 }
 
-// FetchLabels fetches the list of labels, as returned by Gmail.
-func FetchLabels(ctx context.Context, oauthCfg *oauth2.Config, token *oauth2.Token) (
+// FetchLabels fetches the list of labels, as returned by Gmail using authorized http Client.
+func FetchLabels(ctx context.Context, client *http.Client) (
 	*gmail.ListLabelsResponse, error) { // TODO(bzz): extract all args to a struct and make it a method
-	// get an authorized Gmail API client
-	client := oauthCfg.Client(ctx, token)
 	srv, err := gmail.New(client)
 	if err != nil {
 		return nil, err
@@ -107,7 +105,7 @@ func FetchLabels(ctx context.Context, oauthCfg *oauth2.Config, token *oauth2.Tok
 }
 
 // PrintAllLabels prints all labels for a given user.
-func PrintAllLabels(srv *gmail.Service, user string) {
+func PrintAllLabels(srv *gmail.Service, user string) []*gmail.Label {
 	log.Printf("Listing all Gmail labels")
 	labelsResp, err := srv.Users.Labels.List(user).Do()
 	if err != nil {
@@ -118,6 +116,7 @@ func PrintAllLabels(srv *gmail.Service, user string) {
 	for _, l := range labelsResp.Labels {
 		fmt.Println(FormatAsID(l.Name))
 	}
+	return labelsResp.Labels
 }
 
 // FetchConcurent fetches matching messages for a given query in paralle from the Gmail.
@@ -186,17 +185,30 @@ func searchAndFetchConcurent(ctx context.Context, srv *gmail.Service, user, quer
 	return msgs, nil
 }
 
-// ReadFixturesJSON reads email messages from a given JSON file.
-func ReadFixturesJSON(name string) []*gmail.Message {
-	var msgs []*gmail.Message
-	log.Printf("reading emails from %s instead of fetching from Gmail", name)
-
+// ReadMsgFixturesJSON reads Gmail messages from a given JSON file.
+func ReadMsgFixturesJSON(name string) []*gmail.Message {
+	log.Printf("reading messages from %s instead of fetching from Gmail", name)
 	f, err := os.Open(name)
 	if err != nil {
-		log.Fatalf("Unable to read email fixtures: %v", err)
+		log.Fatalf("Unable to read messages fixtures: %v", err)
 	}
 	defer f.Close()
 
+	msgs := []*gmail.Message{}
+	json.NewDecoder(f).Decode(&msgs)
+	return msgs
+}
+
+// ReadLblFixturesJSON reads Gmail labels from a given JSON file.
+func ReadLblFixturesJSON(name string) []*gmail.Label {
+	log.Printf("reading labels from %s instead of fetching from Gmail", name)
+	f, err := os.Open(name)
+	if err != nil {
+		log.Fatalf("Unable to read label fixtures: %v", err)
+	}
+	defer f.Close()
+
+	msgs := []*gmail.Label{}
 	json.NewDecoder(f).Decode(&msgs)
 	return msgs
 }
