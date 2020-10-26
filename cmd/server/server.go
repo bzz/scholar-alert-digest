@@ -19,6 +19,7 @@ import (
 	js "github.com/bzz/scholar-alert-digest/json"
 	"github.com/bzz/scholar-alert-digest/papers"
 	"github.com/bzz/scholar-alert-digest/templates"
+	"github.com/rs/cors"
 
 	"github.com/go-chi/chi"
 	"golang.org/x/oauth2"
@@ -82,7 +83,7 @@ var ( // configuration
 var ( // CLI
 	compact = flag.Bool("compact", false, "output report in compact format (>100 papers)")
 	test    = flag.Bool("test", false, "read emails from ./fixtures/* instead of real Gmail")
-	cors    = flag.Bool("cors", false, "enable CORS for all endpoints (usefull for development)")
+	doCORS  = flag.Bool("cors", false, "enable CORS for all endpoints (usefull for development)")
 	// TODO(bzz): add -read support + equivalent per-user config option (cookies)
 )
 
@@ -117,8 +118,12 @@ func main() {
 
 	r.Route("/json", func(j chi.Router) {
 		j.Use(setContentType("application/json"))
-		if *cors {
-			j.Use(setCORS)
+		if *doCORS {
+			corsOptions := cors.Options{
+				AllowedOrigins: []string{"*"},
+				Debug:          true,
+			}
+			j.Use(cors.New(corsOptions).Handler)
 		}
 		if !*test {
 			j.Use(tokenCtx)
@@ -298,13 +303,6 @@ func setContentType(contentType string) func(next http.Handler) http.Handler {
 		}
 		return http.HandlerFunc(fn)
 	}
-}
-
-func setCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		next.ServeHTTP(w, r)
-	})
 }
 
 type contextKey string
