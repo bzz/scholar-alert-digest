@@ -162,8 +162,8 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		urMsgs = gmailutils.ReadFixturesJSON("./fixtures/unread.json")
-		rMsgs = gmailutils.ReadFixturesJSON("./fixtures/read.json")
+		urMsgs = gmailutils.ReadMsgFixturesJSON("./fixtures/unread.json")
+		rMsgs = gmailutils.ReadMsgFixturesJSON("./fixtures/read.json")
 	}
 
 	// aggregate
@@ -187,31 +187,28 @@ func handleRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleLabelsRead(w http.ResponseWriter, r *http.Request) {
-	tok, authorized := token.FromContext(r.Context())
-	if !authorized { // TODO(bzz): move this to middleware
-		http.Redirect(w, r, "/login", http.StatusFound)
-		return
-	}
+	var gmLabels []*gmail.Label
+	if !*test {
+		tok, authorized := token.FromContext(r.Context())
+		if !authorized { // TODO(bzz): move this to middleware
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
 
-	fetchLabelsAndServeForm(w, r, tok)
-}
-
-func handleLabelsWrite(w http.ResponseWriter, r *http.Request) {
-	saveLabelToCookies(w, r)
-	http.Redirect(w, r, "/", http.StatusFound)
-}
-
-func fetchLabelsAndServeForm(w http.ResponseWriter, r *http.Request, tok *oauth2.Token) {
-	client := oauthCfg.Client(r.Context(), tok)
-	labelsResp, err := gmailutils.FetchLabels(r.Context(), client)
-	if err != nil {
-		log.Printf("Unable to retrieve all labels: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		client := oauthCfg.Client(r.Context(), tok)
+		labelsResp, err := gmailutils.FetchLabels(r.Context(), client)
+		if err != nil {
+			log.Printf("Unable to retrieve all labels: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		gmLabels = labelsResp.Labels
+	} else {
+		gmLabels = gmailutils.ReadLblFixturesJSON("./fixtures/labels.json")
 	}
 
 	var labels []string // user labels, sorted
-	for _, l := range labelsResp.Labels {
+	for _, l := range gmLabels {
 		if l.Type == "system" {
 			continue
 		}
@@ -222,10 +219,15 @@ func fetchLabelsAndServeForm(w http.ResponseWriter, r *http.Request, tok *oauth2
 	// render combination of the nested templates
 	tmpl := template.Must(templates.RootLayout.Clone())
 	tmpl = template.Must(tmpl.Parse(chooseLabelsForm))
-	err = tmpl.Execute(w, labels)
+	err := tmpl.Execute(w, labels)
 	if err != nil {
 		log.Printf("Failed to render a template: %v", err)
 	}
+}
+
+func handleLabelsWrite(w http.ResponseWriter, r *http.Request) {
+	saveLabelToCookies(w, r)
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func saveLabelToCookies(w http.ResponseWriter, r *http.Request) {
@@ -324,16 +326,22 @@ const (
 )
 
 func listLabels(w http.ResponseWriter, r *http.Request) {
-	tok := r.Context().Value(tokenKey).(*oauth2.Token)
-	client := oauthCfg.Client(r.Context(), tok)
-	labelsResp, err := gmailutils.FetchLabels(r.Context(), client)
-	if err != nil {
-		js.ErrNotFound(w, err, "Unable to retrieve labels from Gmail")
-		return
+	var gmLabels []*gmail.Label
+	if !*test {
+		tok := r.Context().Value(tokenKey).(*oauth2.Token)
+		client := oauthCfg.Client(r.Context(), tok)
+		labelsResp, err := gmailutils.FetchLabels(r.Context(), client)
+		if err != nil {
+			js.ErrNotFound(w, err, "Unable to retrieve labels from Gmail")
+			return
+		}
+		gmLabels = labelsResp.Labels
+	} else {
+		gmLabels = gmailutils.ReadLblFixturesJSON("./fixtures/labels.json")
 	}
 
 	var labels []string // user labels, sorted
-	for _, l := range labelsResp.Labels {
+	for _, l := range gmLabels {
 		if l.Type == "system" {
 			continue
 		}
@@ -361,8 +369,8 @@ func listMessages(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		urMsgs = gmailutils.ReadFixturesJSON("./fixtures/unread.json")
-		rMsgs = gmailutils.ReadFixturesJSON("./fixtures/read.json")
+		urMsgs = gmailutils.ReadMsgFixturesJSON("./fixtures/unread.json")
+		rMsgs = gmailutils.ReadMsgFixturesJSON("./fixtures/read.json")
 	}
 
 	// aggregate
