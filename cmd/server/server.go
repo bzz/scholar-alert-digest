@@ -111,8 +111,9 @@ func main() {
 	// r.Use(middleware.Logger)
 
 	corsOptions := cors.Options{
-		AllowedOrigins: []string{"http://localhost:9000"},
-		Debug:          true,
+		AllowedOrigins:   []string{"http://localhost:9000"},
+		AllowCredentials: true,
+		Debug:            true,
 	}
 
 	r.Get("/", handleRoot)
