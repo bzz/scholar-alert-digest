@@ -3,17 +3,23 @@ import PropTypes from "prop-types"
 
 import "components/components.css"
 
+const PaperTitle = ({paper}) => (
+  <>
+    <a className="paper__title" href={paper.URL}>{paper.Title}</a>
+    {`, ${paper.Author} `}
+    ({paper.Refs.map((ref, i) => (
+      <a key={ref} href={`https://mail.google.com/mail/#inbox/${ref}`}>
+        {i + 1}
+      </a>
+    ))})
+  </>
+)
+
 const PaperCompact = ({paper}) => (
   <li>
     <details className="details">
       <summary>
-        <a href={paper.URL}>{paper.Title}</a>
-        {`, ${paper.Author} `}
-        ({paper.Refs.map((ref, i) => (
-          <a key={ref} href={`https://mail.google.com/mail/#inbox/${ref}`}>
-            {i + 1}
-          </a>
-        ))})
+        <PaperTitle paper={paper} />
       </summary>
       <div>{`${paper.Abstract.FirstLine} ${paper.Abstract.Rest}`}</div>
     </details>
@@ -22,13 +28,7 @@ const PaperCompact = ({paper}) => (
 
 const PaperDefault = ({paper}) => (
   <li>
-    <a href={paper.URL}>{paper.Title}</a>
-    {`, ${paper.Author} `}
-    ({paper.Refs.map((ref, i) => (
-      <a key={ref} href={`https://mail.google.com/mail/#inbox/${ref}`}>
-        {i + 1}
-      </a>
-    ))})
+    <PaperTitle paper={paper} />
     <details className="details">
       <summary>{paper.Abstract.FirstLine}</summary>
       <div>{paper.Abstract.Rest}</div>
@@ -64,5 +64,6 @@ Paper.propTypes = {
 
 PaperCompact.propTypes = paperTypes
 PaperDefault.propTypes = paperTypes
+PaperTitle.propTypes = paperTypes
 
 export default Paper

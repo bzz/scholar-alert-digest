@@ -3,3 +3,7 @@
 .markdown-body .details {
   margin: 1rem 0;
 }
+
+.paper__title:visited {
+  color: #551A8B;
+}
