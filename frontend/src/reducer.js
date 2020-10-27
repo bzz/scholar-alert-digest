@@ -21,6 +21,12 @@ const handlers = {
       papers: payload,
     }
   },
+  toggleMode: s => {
+    return {
+      ...s,
+      mode: s.mode === "default" ? "compact" : "default",
+    }
+  },
 }
 
 export const actions = getActions(handlers)

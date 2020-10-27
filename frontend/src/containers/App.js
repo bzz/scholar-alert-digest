@@ -6,8 +6,8 @@ import Labels from "containers/Labels"
 import Main from "containers/Main"
 
 const App = () => {
-  const [state, dispatch] = useReducer(reducer, {labels: []})
-  const {setLabels, setLabel, setPapers} = actions(dispatch)
+  const [state, dispatch] = useReducer(reducer, {labels: [], mode: "default"})
+  const {setLabels, setLabel, setPapers, toggleMode} = actions(dispatch)
 
   const login = url => {
     window.location = url
@@ -49,7 +49,13 @@ const App = () => {
 
   if (state.currentLabel && state.papers != null) {
     return (
-      <Main label={state.currentLabel} papers={state.papers} changeLabel={changeLabel} />
+      <Main
+        papers={state.papers}
+        label={state.currentLabel}
+        changeLabel={changeLabel}
+        mode={state.mode}
+        toggleMode={toggleMode}
+      />
     )
   }
 

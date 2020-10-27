@@ -4,11 +4,11 @@ import PropTypes from "prop-types"
 import "containers/containers.css"
 import Paper from "components/Paper"
 
-const Main = ({papers, label, changeLabel}) => (
+const Main = ({papers, label, changeLabel, mode, toggleMode}) => (
   <div>
     <h1>
       Google Scholar Alert Digest
-      <button className="main__label" type="button" onClick={changeLabel}>
+      <button className="main__switch" type="button" onClick={changeLabel}>
         {label}
       </button>
     </h1>
@@ -30,16 +30,23 @@ const Main = ({papers, label, changeLabel}) => (
         {papers.unread.stats.papers}
       </li>
     </ul>
-    <h2>New papers</h2>
-    <ul>
+    <h2>
+      New papers
+      <button className="main__switch" type="button" onClick={toggleMode}>
+        {mode}
+      </button>
+    </h2>
+    <ul className={`main__papers main__papers--${mode}`}>
       {papers.unread.papers.map(paper => (
-        <Paper key={paper.Title} paper={paper} />
+        <Paper key={paper.Title} paper={paper} mode={mode} />
       ))}
     </ul>
   </div>
 )
 
 Main.propTypes = {
+  toggleMode: PropTypes.func.isRequired,
+  mode: PropTypes.string.isRequired,
   changeLabel: PropTypes.func.isRequired,
   label: PropTypes.string.isRequired,
   papers: PropTypes.shape({
