@@ -31,3 +31,20 @@ const handlers = {
 
 export const actions = getActions(handlers)
 export default createReducer(handlers)
+export const defaultState = {
+  labels: [],
+  mode: "default",
+  papers: {
+    read: {
+      papers: [],
+    },
+    unread: {
+      papers: [],
+      stats: {
+        messages: 0,
+        papers: 0,
+        time: "?",
+      },
+    },
+  },
+}

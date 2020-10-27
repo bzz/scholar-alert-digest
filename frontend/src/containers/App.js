@@ -1,12 +1,12 @@
 import React, {useEffect, useReducer} from "react"
 import {get, post} from "request"
-import reducer, {actions} from "reducer"
+import reducer, {defaultState, actions} from "reducer"
 
 import Labels from "containers/Labels"
 import Main from "containers/Main"
 
 const App = () => {
-  const [state, dispatch] = useReducer(reducer, {labels: [], mode: "default"})
+  const [state, dispatch] = useReducer(reducer, defaultState)
   const {setLabels, setLabel, setPapers, toggleMode} = actions(dispatch)
 
   const login = url => {
@@ -47,7 +47,7 @@ const App = () => {
       .catch(handleError)
   }
 
-  if (state.currentLabel && state.papers != null) {
+  if (state.currentLabel) {
     return (
       <Main
         papers={state.papers}
