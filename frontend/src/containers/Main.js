@@ -3,6 +3,8 @@ import PropTypes from "prop-types"
 
 import "containers/containers.css"
 import Paper from "components/Paper"
+import Loader from "components/Loader"
+import {Either} from "utils"
 
 const Main = ({papers, label, changeLabel, mode, toggleMode}) => (
   <div>
@@ -36,11 +38,16 @@ const Main = ({papers, label, changeLabel, mode, toggleMode}) => (
         {mode}
       </button>
     </h2>
-    <ul className={`main__papers main__papers--${mode}`}>
-      {papers.unread.papers.map(paper => (
-        <Paper key={paper.Title} paper={paper} mode={mode} />
-      ))}
-    </ul>
+    <Either cond={papers.unread.papers.length > 0}>
+      <ul className={`main__papers main__papers--${mode}`}>
+        {
+          papers.unread.papers.map(paper => (
+            <Paper key={paper.Title} paper={paper} mode={mode} />
+          ))
+        }
+      </ul>
+      <Loader />
+    </Either>
   </div>
 )
 
