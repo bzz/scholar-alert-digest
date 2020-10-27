@@ -83,7 +83,7 @@ var ( // configuration
 var ( // CLI
 	compact = flag.Bool("compact", false, "output report in compact format (>100 papers)")
 	test    = flag.Bool("test", false, "read emails from ./fixtures/* instead of real Gmail")
-	doCORS  = flag.Bool("cors", false, "enable CORS for all endpoints (usefull for development)")
+	dev     = flag.Bool("dev", false, "development mode where /login/auth redirects to :9000 and CORS is enabled")
 	// TODO(bzz): add -read support + equivalent per-user config option (cookies)
 )
 
@@ -110,6 +110,12 @@ func main() {
 	r.Use(tokenAndLabelCookiesCtx)
 	// r.Use(middleware.Logger)
 
+	corsOptions := cors.Options{
+		AllowedOrigins:   []string{"http://localhost:9000"},
+		AllowCredentials: true,
+		Debug:            true,
+	}
+
 	r.Get("/", handleRoot)
 	r.Get("/labels", handleLabelsRead)
 	r.Post("/labels", handleLabelsWrite)
@@ -118,11 +124,7 @@ func main() {
 
 	r.Route("/json", func(j chi.Router) {
 		j.Use(setContentType("application/json"))
-		if *doCORS {
-			corsOptions := cors.Options{
-				AllowedOrigins: []string{"*"},
-				Debug:          true,
-			}
+		if *dev {
 			j.Use(cors.New(corsOptions).Handler)
 		}
 		if !*test {
@@ -280,7 +282,11 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Saving new cookie: %s", cookie.String())
 	http.SetCookie(w, cookie)
 
-	http.Redirect(w, r, "/", http.StatusFound)
+	toURL := "/"
+	if *dev {
+		toURL = "//localhost:9000"
+	}
+	http.Redirect(w, r, toURL, http.StatusMovedPermanently)
 }
 
 // tokenAndLabelCookiesCtx reads token from request cookie and saves it to the Context.

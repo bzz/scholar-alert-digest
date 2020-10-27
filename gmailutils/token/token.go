@@ -89,7 +89,7 @@ func FromFile(file string) (*oauth2.Token, error) {
 type contextKey string
 
 const (
-	sessionKey contextKey = "session"
+	sessionKey contextKey = "token"
 	labelKey   contextKey = "label"
 )
 
