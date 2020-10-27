@@ -12,14 +12,28 @@ const App = () => {
   useEffect(() => {
     const maybeLabel = localStorage.getItem("label")
 
+    const login = url => {
+      window.location = url
+    }
+
+    const handleError = e => {
+      if (e.status === 401) {
+        login(e.payload.Redirect)
+      }
+    }
+
     if (maybeLabel) {
       setLabel(maybeLabel)
-      post("json/messages", {label: maybeLabel}).then(setPapers)
+      post("json/messages", {label: maybeLabel})
+        .then(setPapers)
+        .catch(handleError)
     } else {
-      get("json/labels").then(({labels}) => {
-        setLabels(labels)
-        localStorage.setItem("labels", JSON.stringify(labels))
-      })
+      get("json/labels")
+        .then(({labels}) => {
+          setLabels(labels)
+          localStorage.setItem("labels", JSON.stringify(labels))
+        })
+        .catch(handleError)
     }
   }, [])
 
