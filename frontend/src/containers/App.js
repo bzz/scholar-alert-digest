@@ -9,18 +9,18 @@ const App = () => {
   const [state, dispatch] = useReducer(reducer, {labels: []})
   const {setLabels, setLabel, setPapers} = actions(dispatch)
 
+  const login = url => {
+    window.location = url
+  }
+
+  const handleError = e => {
+    if (e.status === 401) {
+      login(e.payload.Redirect)
+    }
+  }
+
   useEffect(() => {
     const maybeLabel = localStorage.getItem("label")
-
-    const login = url => {
-      window.location = url
-    }
-
-    const handleError = e => {
-      if (e.status === 401) {
-        login(e.payload.Redirect)
-      }
-    }
 
     if (maybeLabel) {
       setLabel(maybeLabel)
@@ -37,9 +37,19 @@ const App = () => {
     }
   }, [])
 
-  if (state.papers != null) {
+  const changeLabel = _ => {
+    setLabel(null)
+    get("json/labels")
+      .then(({labels}) => {
+        setLabels(labels)
+        localStorage.setItem("labels", JSON.stringify(labels))
+      })
+      .catch(handleError)
+  }
+
+  if (state.currentLabel && state.papers != null) {
     return (
-      <Main papers={state.papers} />
+      <Main label={state.currentLabel} papers={state.papers} changeLabel={changeLabel} />
     )
   }
 

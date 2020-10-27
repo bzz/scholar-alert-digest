@@ -4,9 +4,14 @@ import PropTypes from "prop-types"
 import "containers/containers.css"
 import Paper from "components/Paper"
 
-const Main = ({papers}) => (
+const Main = ({papers, label, changeLabel}) => (
   <div>
-    <h1>Google Scholar Alert Digest</h1>
+    <h1>
+      Google Scholar Alert Digest
+      <button className="main__label" type="button" onClick={changeLabel}>
+        {label}
+      </button>
+    </h1>
     <ul className="metadata">
       <li>
         <b>Date: </b>
@@ -35,6 +40,8 @@ const Main = ({papers}) => (
 )
 
 Main.propTypes = {
+  changeLabel: PropTypes.func.isRequired,
+  label: PropTypes.string.isRequired,
   papers: PropTypes.shape({
     read: PropTypes.shape({
       papers: PropTypes.arrayOf(PropTypes.object),
