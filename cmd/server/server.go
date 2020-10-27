@@ -106,10 +106,11 @@ func main() {
 	r.Get("/login", handleLogin)
 	r.Get("/login/authorized", handleAuth)
 
-	// static
-	workDir, _ := os.Getwd()
-	filesDir := http.Dir(filepath.Join(workDir, "frontend", "dist"))
-	FileServer(r, "/static", filesDir)
+	if !*dev { // static
+		workDir, _ := os.Getwd()
+		filesDir := http.Dir(filepath.Join(workDir, "frontend", "dist"))
+		FileServer(r, "/static", filesDir)
+	}
 
 	r.Route("/json", func(j chi.Router) {
 		j.Use(setContentType("application/json"))
