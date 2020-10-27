@@ -7,3 +7,52 @@
 .paper__title:visited {
   color: #551A8B;
 }
+
+/********** Loader **********/
+/* taken from https://codepen.io/megatroncoder/pen/Xqeyva?editors=0100 */
+
+.centered {
+  width: 200px;
+  height: 80px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  filter: blur(10px) contrast(20);
+}
+
+.blob-1,
+.blob-2 {
+  width: 40px;
+  height: 40px;
+  position: absolute;
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.blob-1 {
+  animation: osc-l 2.5s ease infinite;
+  background: blue;
+  left: 20%;
+}
+
+.blob-2 {
+  animation: osc-r 2.5s ease infinite;
+  background: red;
+  left: 80%;
+}
+
+@keyframes osc-l {
+  0% {left:20%;}
+  50% {left:50%;}
+  100% {left:20%;}
+}
+
+@keyframes osc-r {
+  0% {left:80%;}
+  50% {left:50%;}
+  100% {left:80%;}
+}
