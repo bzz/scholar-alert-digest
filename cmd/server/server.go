@@ -84,6 +84,7 @@ var ( // CLI
 	compact = flag.Bool("compact", false, "output report in compact format (>100 papers)")
 	test    = flag.Bool("test", false, "read emails from ./fixtures/* instead of real Gmail")
 	doCORS  = flag.Bool("cors", false, "enable CORS for all endpoints (usefull for development)")
+	dev     = flag.Bool("dev", false, "development mode wherr /login/auth redirects to :9000 of 'npm run dev'")
 	// TODO(bzz): add -read support + equivalent per-user config option (cookies)
 )
 
@@ -280,7 +281,11 @@ func handleAuth(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Saving new cookie: %s", cookie.String())
 	http.SetCookie(w, cookie)
 
-	http.Redirect(w, r, "/", http.StatusFound)
+	toURL := "/"
+	if *dev {
+		toURL = "//localhost:9000"
+	}
+	http.Redirect(w, r, toURL, http.StatusMovedPermanently)
 }
 
 // tokenAndLabelCookiesCtx reads token from request cookie and saves it to the Context.
