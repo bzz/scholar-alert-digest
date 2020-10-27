@@ -12,7 +12,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 	"github.com/bzz/scholar-alert-digest/gmailutils/token"
@@ -103,6 +105,11 @@ func main() {
 	r.Post("/labels", handleLabelsWrite)
 	r.Get("/login", handleLogin)
 	r.Get("/login/authorized", handleAuth)
+
+	// static
+	workDir, _ := os.Getwd()
+	filesDir := http.Dir(filepath.Join(workDir, "frontend", "dist"))
+	FileServer(r, "/static", filesDir)
 
 	r.Route("/json", func(j chi.Router) {
 		j.Use(setContentType("application/json"))
@@ -278,6 +285,27 @@ func tokenAndLabelCookiesCtx(next http.Handler) http.Handler {
 		ctx := token.NewSessionContext(r.Context(), r.Cookies())
 		ctx = token.NewLabelContext(ctx, r.Cookies())
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// FileServer conveniently sets up a http.FileServer handler to serve
+// static files from a http.FileSystem.
+func FileServer(r chi.Router, path string, root http.FileSystem) {
+	if strings.ContainsAny(path, "{}*") {
+		panic("FileServer does not permit any URL parameters.")
+	}
+
+	if path != "/" && path[len(path)-1] != '/' {
+		r.Get(path, http.RedirectHandler(path+"/", 301).ServeHTTP)
+		path += "/"
+	}
+	path += "*"
+
+	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
+		rctx := chi.RouteContext(r.Context())
+		pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
+		fs := http.StripPrefix(pathPrefix, http.FileServer(root))
+		fs.ServeHTTP(w, r)
 	})
 }
 
