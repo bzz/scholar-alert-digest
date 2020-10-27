@@ -10,6 +10,7 @@ const req = method => (endpoint = "", payload) =>
       method,
       body: JSON.stringify(payload),
       mode: "cors",
+      credentials: "include",
     },
   ))
   .then(async r => {
