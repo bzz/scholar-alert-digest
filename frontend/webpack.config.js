@@ -1,8 +1,9 @@
 const path = require("path")
+const webpack = require("webpack")
 const HtmlWebpackPlugin = require("html-webpack-plugin")
 
-module.exports = {
-  mode: "development",
+module.exports = env => ({
+  mode: env.development ? "development" : "production",
   entry: [
     "regenerator-runtime/runtime",
     "./src/index.js",
@@ -23,6 +24,9 @@ module.exports = {
     new HtmlWebpackPlugin({
       favicon: "./favicon.png",
     }),
+    new webpack.DefinePlugin({
+      __DEV__: env.development,
+    }),
   ],
   module: {
     rules: [
@@ -42,4 +46,4 @@ module.exports = {
       },
     ],
   },
-}
+})

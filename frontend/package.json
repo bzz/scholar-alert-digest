@@ -4,8 +4,8 @@
   "description": "front-end app for scholar alert digest",
   "main": "src/index.js",
   "scripts": {
-    "build": "webpack",
-    "dev": "webpack serve",
+    "build": "webpack --env production",
+    "dev": "webpack serve --env development",
     "lint": "eslint src .eslintrc.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
