@@ -7,9 +7,9 @@ const Paper = ({paper}) => (
   <li>
     <a href={paper.URL}>{paper.Title}</a>
     {`, ${paper.Author} `}
-    ({paper.Refs.map(ref => (
+    ({paper.Refs.map((ref, i) => (
       <a key={ref} href={`https://mail.google.com/mail/#inbox/${ref}`}>
-        ?
+        {i + 1}
       </a>
     ))})
     <details className="details">
