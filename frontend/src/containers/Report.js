@@ -5,6 +5,7 @@ import "containers/containers.css"
 import Paper from "components/Paper"
 import Loader from "components/Loader"
 import Header from "components/ReportHeader"
+import Switch from "components/Switch"
 import {Either} from "utils"
 
 const Main = ({papers, stats, label, changeLabel, mode, toggleMode}) => (
@@ -17,9 +18,7 @@ const Main = ({papers, stats, label, changeLabel, mode, toggleMode}) => (
     />
     <h2>
       New papers
-      <button className="main__switch" type="button" onClick={toggleMode}>
-        {mode}
-      </button>
+      <Switch label={mode} onClick={toggleMode} />
     </h2>
     <Either cond={papers.length > 0}>
       <ul className={`main__papers main__papers--${mode}`}>

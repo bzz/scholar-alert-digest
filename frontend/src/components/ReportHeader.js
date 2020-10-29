@@ -1,13 +1,13 @@
 import React from "react"
 import PropTypes from "prop-types"
 
+import Switch from "components/Switch"
+
 const Header = ({changeLabel, label, stats, papers}) => (
   <>
     <h1>
       Google Scholar Alert Digest
-      <button className="main__switch" type="button" onClick={changeLabel}>
-        {label}
-      </button>
+      <Switch label={label} onClick={changeLabel} />
     </h1>
     <ul className="metadata">
       <li>
