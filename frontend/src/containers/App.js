@@ -3,7 +3,7 @@ import reducer, {defaultState, actions} from "reducer"
 import {init, changeLabel} from "effects"
 
 import Labels from "containers/Labels"
-import Main from "containers/Main"
+import Report from "containers/Report"
 
 const App = () => {
   const [state, dispatch] = useReducer(reducer, defaultState)
@@ -14,9 +14,12 @@ const App = () => {
   }, [])
 
   if (state.currentLabel) {
+    const {stats, papers} = state.papers.unread
+
     return (
-      <Main
-        papers={state.papers}
+      <Report
+        stats={stats}
+        papers={papers}
         label={state.currentLabel}
         changeLabel={changeLabel({setLabels, setLabel})}
         mode={state.mode}
