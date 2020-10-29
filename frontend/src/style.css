@@ -4,9 +4,13 @@
 
 .markdown-body {
   min-width: 200px;
-  max-width: 980px;
+  max-width: 1800px;
   margin: 0 auto;
   padding: 45px;
+}
+
+.markdown-body li+li {
+  margin-top: 0;
 }
 
 @media (max-width: 767px) {
