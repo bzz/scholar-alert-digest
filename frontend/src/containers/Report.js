@@ -8,8 +8,8 @@ import Header from "components/ReportHeader"
 import Switch from "components/Switch"
 import {Either} from "utils"
 
-const Main = ({papers, stats, label, changeLabel, mode, toggleMode}) => (
-  <div>
+const Report = ({papers, stats, label, changeLabel, mode, toggleMode}) => (
+  <div data-testid="report">
     <Header
       changeLabel={changeLabel}
       label={label}
@@ -33,7 +33,7 @@ const Main = ({papers, stats, label, changeLabel, mode, toggleMode}) => (
   </div>
 )
 
-Main.propTypes = {
+Report.propTypes = {
   toggleMode: PropTypes.func.isRequired,
   mode: PropTypes.string.isRequired,
   changeLabel: PropTypes.func.isRequired,
@@ -46,4 +46,4 @@ Main.propTypes = {
   }).isRequired,
 }
 
-export default Main
+export default Report

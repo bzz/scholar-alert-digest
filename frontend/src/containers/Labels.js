@@ -1,24 +1,15 @@
 import React, {useState} from "react"
 import PropTypes from "prop-types"
 
-import {post} from "request"
+import {selectLabel} from "effects"
 
 import "containers/containers.css"
-
-const handleSubmit = ({setLabel, setPapers}) => label => e => {
-  e.preventDefault()
-
-  setLabel(label)
-  localStorage.setItem("label", JSON.stringify(label))
-
-  post("json/messages", {label}).then(setPapers)
-}
 
 const Labels = ({labels, setLabel, setPapers}) => {
   const [checked, check] = useState(labels[0])
 
   return (
-    <form onSubmit={handleSubmit({setLabel, setPapers})(checked)}>
+    <form data-testid="labels" onSubmit={selectLabel({setLabel, setPapers})(checked)}>
       <h1>Select a gmail label to aggregate</h1>
       <ul className="labels__list">
         {labels.map(label => (

@@ -42,3 +42,12 @@ export const init = ({setLabels, setLabel, setPapers}) => {
     getLabels({setLabels})
   }
 }
+
+export const selectLabel = ({setLabel, setPapers}) => label => e => {
+  e.preventDefault()
+
+  setLabel(label)
+  localStorage.setItem("label", JSON.stringify(label))
+
+  post("json/messages", {label}).then(setPapers)
+}
