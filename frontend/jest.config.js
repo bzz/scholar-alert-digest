@@ -7,4 +7,7 @@ module.exports = {
     "^.+\\.jsx?$": "babel-jest",
     "\\.(css|less|scss|sass)$": "jest-transform-css",
   },
+  globals: {
+    __DEV__: true,
+  },
 }
