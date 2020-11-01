@@ -27,12 +27,19 @@ const handlers = {
       mode: s.mode === "default" ? "compact" : "default",
     }
   },
+  setView: (s, {payload}) => {
+    return {
+      ...s,
+      view: payload,
+    }
+  },
 }
 
 export const actions = getActions(handlers)
 export default createReducer(handlers)
 export const defaultState = {
   labels: [],
+  view: "labels",
   mode: "default",
   papers: {
     read: {

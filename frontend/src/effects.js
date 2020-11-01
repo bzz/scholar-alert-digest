@@ -25,17 +25,18 @@ export const getMessages = ({label, setPapers}) => {
     .catch(handleError)
 }
 
-export const changeLabel = ({setLabels, setLabel}) => _ => {
-  setLabel(null)
+export const changeLabel = ({setView, setLabels}) => _ => {
+  setView("labels")
   getLabels({setLabels})
 }
 
-export const init = ({setLabels, setLabel, setPapers}) => {
-  const maybeLabel = localStorage.getItem("label")
+export const init = ({setView, setLabels, setLabel, setPapers}) => {
+  const maybeLabel = JSON.parse(localStorage.getItem("label"))
 
   if (maybeLabel) {
     const label = maybeLabel
 
+    setView("report")
     setLabel(label)
     getMessages({label, setPapers})
   } else {
@@ -43,11 +44,14 @@ export const init = ({setLabels, setLabel, setPapers}) => {
   }
 }
 
-export const selectLabel = ({setLabel, setPapers}) => label => e => {
+export const selectLabel = ({setView, setLabel, setPapers}) => label => e => {
   e.preventDefault()
 
   setLabel(label)
   localStorage.setItem("label", JSON.stringify(label))
 
-  post("json/messages", {label}).then(setPapers)
+  post("json/messages", {label}).then(papers => {
+    setPapers(papers)
+    setView("report")
+  })
 }

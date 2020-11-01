@@ -5,10 +5,10 @@ import {init, changeLabel} from "effects"
 import Labels from "containers/Labels"
 import Report from "containers/Report"
 
-const App = ({state, setLabels, setLabel, setPapers, toggleMode}) => {
-  useEffect(() => init({setLabels, setLabel, setPapers}), [])
+const App = ({state, setView, setLabels, setLabel, setPapers, toggleMode}) => {
+  useEffect(() => init({setView, setLabels, setLabel, setPapers}), [])
 
-  if (state.currentLabel) {
+  if (state.view === "report") {
     const {stats, papers} = state.papers.unread
 
     return (
@@ -16,16 +16,22 @@ const App = ({state, setLabels, setLabel, setPapers, toggleMode}) => {
         stats={stats}
         papers={papers}
         label={state.currentLabel}
-        changeLabel={changeLabel({setLabels, setLabel})}
+        changeLabel={changeLabel({setView, setLabels, setLabel})}
         mode={state.mode}
         toggleMode={toggleMode}
       />
     )
   }
 
-  if (state.labels.length > 0) {
+  if (state.view === "labels" && state.labels.length > 0) {
     return (
-      <Labels labels={state.labels} setLabel={setLabel} setPapers={setPapers} />
+      <Labels
+        currentLabel={state.currentLabel}
+        labels={state.labels}
+        setLabel={setLabel}
+        setPapers={setPapers}
+        setView={setView}
+      />
     )
   }
 
@@ -46,6 +52,7 @@ const paperProps = PropTypes.shape({
 })
 
 App.propTypes = {
+  setView: PropTypes.func.isRequired,
   toggleMode: PropTypes.func.isRequired,
   setPapers: PropTypes.func.isRequired,
   setLabel: PropTypes.func.isRequired,
@@ -53,6 +60,7 @@ App.propTypes = {
   state: PropTypes.shape({
     currentLabel: PropTypes.string,
     labels: PropTypes.arrayOf(PropTypes.string).isRequired,
+    view: PropTypes.string.isRequired,
     mode: PropTypes.string.isRequired,
     papers: PropTypes.shape({
       read: PropTypes.shape({

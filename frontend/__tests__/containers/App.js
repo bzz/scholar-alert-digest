@@ -8,11 +8,14 @@ import {init, changeLabel} from "effects"
 
 jest.mock("effects", () => {
   const changeLabel = jest.fn()
+  const selectLabel = jest.fn()
   changeLabel.mockReturnValue(jest.fn)
+  selectLabel.mockReturnValue(jest.fn)
 
   return {
     init: jest.fn(),
     changeLabel,
+    selectLabel,
   }
 })
 
@@ -23,6 +26,7 @@ afterEach(() => {
 test("renders app container", () => {
   const props = {
     state: {
+      view: "labels",
       mode: "default",
       labels: [],
       papers: {
@@ -56,6 +60,7 @@ test("renders app container", () => {
 test("renders app container > labels", () => {
   const props = {
     state: {
+      view: "labels",
       mode: "default",
       labels: ["label1", "label2"],
       papers: {
@@ -89,6 +94,7 @@ test("renders app container > labels", () => {
 test("renders app container > report", () => {
   const props = {
     state: {
+      view: "report",
       mode: "default",
       currentLabel: "label1",
       labels: ["label1", "label2"],
