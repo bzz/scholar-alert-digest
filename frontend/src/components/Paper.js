@@ -2,6 +2,7 @@
 
 import React from "react"
 import PropTypes from "prop-types"
+import {modes} from "constants"
 
 import "components/components.css"
 
@@ -39,7 +40,7 @@ const PaperDefault = ({paper}) => (
 )
 
 const Paper = ({paper, mode}) => {
-  if (mode === "compact") {
+  if (mode === modes.compact) {
     return <PaperCompact paper={paper} />
   }
 

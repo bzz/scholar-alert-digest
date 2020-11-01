@@ -5,6 +5,7 @@ import {render} from "@testing-library/react"
 import App from "containers/App"
 
 import {init, changeLabel} from "effects"
+import {modes, views} from "constants"
 
 jest.mock("effects", () => {
   const changeLabel = jest.fn()
@@ -26,8 +27,8 @@ afterEach(() => {
 test("renders app container", () => {
   const props = {
     state: {
-      view: "labels",
-      mode: "default",
+      view: views.labels,
+      mode: modes.default,
       labels: [],
       papers: {
         read: {
@@ -47,6 +48,7 @@ test("renders app container", () => {
     setLabel: jest.fn(),
     setPapers: jest.fn(),
     toggleMode: jest.fn(),
+    setView: jest.fn(),
   }
 
   const {container} = render(
@@ -60,8 +62,8 @@ test("renders app container", () => {
 test("renders app container > labels", () => {
   const props = {
     state: {
-      view: "labels",
-      mode: "default",
+      view: views.labels,
+      mode: modes.default,
       labels: ["label1", "label2"],
       papers: {
         read: {
@@ -81,6 +83,7 @@ test("renders app container > labels", () => {
     setLabel: jest.fn(),
     setPapers: jest.fn(),
     toggleMode: jest.fn(),
+    setView: jest.fn(),
   }
 
   const {queryByTestId} = render(
@@ -94,8 +97,8 @@ test("renders app container > labels", () => {
 test("renders app container > report", () => {
   const props = {
     state: {
-      view: "report",
-      mode: "default",
+      view: views.report,
+      mode: modes.default,
       currentLabel: "label1",
       labels: ["label1", "label2"],
       papers: {
@@ -116,6 +119,7 @@ test("renders app container > report", () => {
     setLabel: jest.fn(),
     setPapers: jest.fn(),
     toggleMode: jest.fn(),
+    setView: jest.fn(),
   }
 
   const {queryByTestId} = render(

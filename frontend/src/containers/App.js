@@ -1,6 +1,7 @@
 import React, {useEffect} from "react"
 import PropTypes from "prop-types"
 import {init, changeLabel} from "effects"
+import {views} from "constants"
 
 import Labels from "containers/Labels"
 import Report from "containers/Report"
@@ -8,7 +9,7 @@ import Report from "containers/Report"
 const App = ({state, setView, setLabels, setLabel, setPapers, toggleMode}) => {
   useEffect(() => init({setView, setLabels, setLabel, setPapers}), [])
 
-  if (state.view === "report") {
+  if (state.view === views.report) {
     const {stats, papers} = state.papers.unread
 
     return (
@@ -23,7 +24,7 @@ const App = ({state, setView, setLabels, setLabel, setPapers, toggleMode}) => {
     )
   }
 
-  if (state.view === "labels" && state.labels.length > 0) {
+  if (state.view === views.labels && state.labels.length > 0) {
     return (
       <Labels
         currentLabel={state.currentLabel}

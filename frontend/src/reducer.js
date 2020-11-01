@@ -1,12 +1,13 @@
 /* eslint-disable arrow-body-style */
 
 import {getActions, createReducer} from "utils"
+import {modes, views} from "constants"
 
 const handlers = {
-  setLabels: (s, {payload}) => {
+  setLabels: (s, {payload: {labels}}) => {
     return {
       ...s,
-      labels: payload,
+      labels,
     }
   },
   setLabel: (s, {payload}) => {
@@ -24,7 +25,7 @@ const handlers = {
   toggleMode: s => {
     return {
       ...s,
-      mode: s.mode === "default" ? "compact" : "default",
+      mode: s.mode === modes.default ? modes.compact : modes.default,
     }
   },
   setView: (s, {payload}) => {
@@ -39,8 +40,8 @@ export const actions = getActions(handlers)
 export default createReducer(handlers)
 export const defaultState = {
   labels: [],
-  view: "labels",
-  mode: "default",
+  view: views.labels,
+  mode: modes.default,
   papers: {
     read: {
       papers: [],

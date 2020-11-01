@@ -1,4 +1,5 @@
 import {get, post} from "request"
+import {views} from "constants"
 
 export const login = url => {
   window.location = url
@@ -12,10 +13,7 @@ export const handleError = e => {
 
 export const getLabels = ({setLabels}) => {
   get("json/labels")
-    .then(({labels}) => {
-      setLabels(labels)
-      localStorage.setItem("labels", JSON.stringify(labels))
-    })
+    .then(setLabels)
     .catch(handleError)
 }
 
@@ -26,7 +24,7 @@ export const getMessages = ({label, setPapers}) => {
 }
 
 export const changeLabel = ({setView, setLabels}) => _ => {
-  setView("labels")
+  setView(views.labels)
   getLabels({setLabels})
 }
 
@@ -36,7 +34,7 @@ export const init = ({setView, setLabels, setLabel, setPapers}) => {
   if (maybeLabel) {
     const label = maybeLabel
 
-    setView("report")
+    setView(views.report)
     setLabel(label)
     getMessages({label, setPapers})
   } else {
@@ -52,6 +50,6 @@ export const selectLabel = ({setView, setLabel, setPapers}) => label => e => {
 
   post("json/messages", {label}).then(papers => {
     setPapers(papers)
-    setView("report")
+    setView(views.report)
   })
 }
