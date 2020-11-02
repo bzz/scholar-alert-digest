@@ -1,4 +1,4 @@
-## Welcome to scholoar.wtf!
+## Welcome to scholar.wtf!
 
 You can use the [editor on GitHub](https://github.com/bzz/scholar-alert-digest/edit/gh-pages/index.md) to maintain and preview the content for your website in Markdown files.
 
