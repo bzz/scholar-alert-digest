@@ -194,7 +194,7 @@ func NewMarkdownRenderer(templateText, oldTemplateText string) Renderer {
 				//  * html/template escape HTML strings \wo template.HTML
 				return template.HTML(
 					fmt.Sprintf(
-						"<a target='_blank' href='https://mail.google.com/mail/#inbox/%s'>%s</a>",
+						"<a target='_blank' style='color: inherit; text-decoration: none;' href='https://mail.google.com/mail/#inbox/%s'>%s</a>",
 						ID, title,
 					),
 				)
