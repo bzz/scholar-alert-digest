@@ -8,6 +8,18 @@
   color: #551A8B;
 }
 
+.markdown-body .paper__ref {
+  color: #565656;
+}
+
+.markdown-body .paper__ref:visited {
+  color: #565656;
+}
+
+.paper__author {
+  font-style: italic;
+}
+
 /********** Switch **********/
 .switch {
   cursor: pointer;
