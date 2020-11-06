@@ -47,24 +47,6 @@ var ( // templates
 </form>
 {{ end }}
 `
-
-	newMdTemplText = `# Google Scholar Alert Digest
-
-**Date**: {{.Date}}
-**Unread emails**: {{.UnreadEmails}}
-**Paper titles**: {{.TotalPapers}}
-**Uniq paper titles**: {{.UniqPapers}}
-
-## New papers
-{{ range $paper := sortedKeys .Papers }}
- - [{{ .Title }}]({{ .URL }}) ({{index $.Papers .}})
-   {{- if .Abstract.FirstLine }}
-   <details>
-     <summary>{{.Abstract.FirstLine}}</summary>{{.Abstract.Rest}}
-   </details>
-   {{ end }}
-{{ end }}
-`
 )
 
 var ( // configuration

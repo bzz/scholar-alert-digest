@@ -263,6 +263,9 @@ func NormalizeAndSplit(subj string) []string {
 type subjFormat struct{ ru, En string }
 
 var (
+	articles = subjFormat{
+		"Новые статьи пользователя ", "new articles",
+	}
 	citations = subjFormat{
 		": новые ссылки", "new citations",
 	}
@@ -271,9 +274,6 @@ var (
 	}
 	search = subjFormat{
 		"Новые результаты по запросу ", "new results",
-	}
-	articles = subjFormat{
-		"Новые статьи пользователя ", "new articles",
 	}
 	// TODO(bzz): add this as well
 	// recomended = subjFormat{

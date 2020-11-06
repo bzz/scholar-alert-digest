@@ -53,12 +53,12 @@ var (
 	refsMdTemplateText = `
 {{ define "refs" -}}
 ({{ if eq (len .Refs) 0}}{{ .Freq }}{{end}}
-{{- if gt (len .Refs) 1 }}{{ .Freq }}: {{ end }}
-{{- range $i, $ID := .Refs}}
+{{- if gt (len .Refs) 1}}{{ .Freq }}: {{end}}
+{{- range $i, $ref := .Refs}}
 	{{- if $i}}, {{end}}
-	{{- anchorHTML $ID "" $i -}}
+	{{- anchorHTML $ref.ID $ref.Title $i -}}
 {{- end}})
-{{- end }}
+{{- end}}
 `
 
 	CompactMdTemplText = `# Google Scholar Alert Digest
@@ -194,7 +194,7 @@ func NewMarkdownRenderer(templateText, oldTemplateText string) Renderer {
 				//  * html/template escape HTML strings \wo template.HTML
 				return template.HTML(
 					fmt.Sprintf(
-						"<a target='_blank' href='https://mail.google.com/mail/#inbox/%s'>%s</a>",
+						"<a target='_blank' style='color: inherit; text-decoration: none;' href='https://mail.google.com/mail/#inbox/%s'>%s</a>",
 						ID, title,
 					),
 				)
