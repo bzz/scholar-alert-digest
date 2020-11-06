@@ -1,7 +1,6 @@
 /* eslint-disable */
-
-const devBase = "http://localhost:8080"
-const prodBase = "."
+const devBase = "http://localhost:8080/json"
+const prodBase = __PROD_BASE__ || "."
 const baseUrl = __DEV__ ? devBase : prodBase
 const req = method => (endpoint = "", payload) =>
   fetch(new Request(

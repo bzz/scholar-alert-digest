@@ -26,6 +26,7 @@ module.exports = env => ({
     }),
     new webpack.DefinePlugin({
       __DEV__: env.development,
+      __PROD_BASE__: JSON.stringify(env.baseUrl),
     }),
   ],
   module: {

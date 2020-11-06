@@ -12,13 +12,13 @@ export const handleError = e => {
 }
 
 export const getLabels = ({setLabels}) => {
-  get("json/labels")
+  get("labels")
     .then(setLabels)
     .catch(handleError)
 }
 
 export const getMessages = ({label, setPapers}) => {
-  post("json/messages", {label})
+  post("messages", {label})
     .then(setPapers)
     .catch(handleError)
 }
@@ -48,7 +48,7 @@ export const selectLabel = ({setView, setLabel, setPapers}) => label => e => {
   setLabel(label)
   localStorage.setItem("label", JSON.stringify(label))
 
-  post("json/messages", {label}).then(papers => {
+  post("messages", {label}).then(papers => {
     setPapers(papers)
     setView(views.report)
   })
