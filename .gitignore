@@ -4,3 +4,7 @@ credentials.json
 __pycache__
 .venv/
 .vscode/
+
+node_modules
+frontend/dist
+.eslintcache
