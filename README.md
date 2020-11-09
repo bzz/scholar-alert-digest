@@ -13,6 +13,7 @@ a Gmail label from the Google Scholar alerts, grouping papers by title and produ
     * [Configure](#configure-1)
     * [Test](#test)
     * [Run](#run-1)
+    * [Deploy](#deploy)
 * [License](#license)
 
 # How to use
@@ -145,6 +146,16 @@ to spin up a server at http://localhost:8080
 
 Start by visiting http://localhost:8080/login to get the user OAuth access token.
 Visit http://localhost:8080/labels to chose your label name.
+
+## Deploy
+To deploy, you need to build a backend and the frontend first:
+```sh
+./build.sh
+```
+
+At the moment, `server` will serve static resources from the `./ frontend/dist` from `/static`.
+
+Actual deployment \w k8s descriptor is TBD.
 
 # License
 
