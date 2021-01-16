@@ -28,6 +28,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -253,27 +254,48 @@ func Subject(m *gmail.MessagePart) string {
 
 // NormalizeAndSplit normalizes subj format and split it to type/source.
 func NormalizeAndSplit(subj string) []string {
-	srcType, _ := splitOnDash(subj) // handles at least EN and FR locales
+	var srcType []string
+	srcType, _ = splitOnDash(subj) // handles at least EN and FR locales
 	if len(srcType) != 2 {
 		srcType = splitOnRuLocale(subj)
 	}
+
+	// nomalizes citations
+	if len(srcType) != 2 {
+		re := regexp.MustCompile(citations.En + `|` + citations.ja)
+		substr := re.FindAllStringSubmatch(subj, -1)
+		if substr != nil {
+			switch {
+			case substr[0][1] != "":
+				srcType = []string{substr[0][1], citations.En}
+			case substr[0][2] != "":
+				srcType = []string{substr[0][2], citations.En}
+			case substr[0][3] != "":
+				srcType = []string{substr[0][3], citations.En}
+			}
+		}
+	}
+
 	return srcType
 }
 
-type subjFormat struct{ ru, En string }
+type subjFormat struct{ ru, ja, En string }
 
 var (
 	articles = subjFormat{
-		"Новые статьи пользователя ", "new articles",
+		"Новые статьи пользователя ", "新しい論文", "new articles",
 	}
 	citations = subjFormat{
-		": новые ссылки", "new citations",
+		": новые ссылки", `^(?:(.+) さん|(自分))の論文からの引用: \d+ 件$`, `^\d+ new citations? to articles by (.+)$`,
+	}
+	citationsOld = subjFormat{
+		": новые ссылки", "新しい引用", "new citations",
 	}
 	related = subjFormat{
-		"Новые статьи, связанные с работами автора ", "new related research",
+		"Новые статьи, связанные с работами автора ", "関連する新しい研究", "new related research",
 	}
 	search = subjFormat{
-		"Новые результаты по запросу ", "new results",
+		"Новые результаты по запросу ", "新しい結果", "new results",
 	}
 	// TODO(bzz): add this as well
 	// recomended = subjFormat{
@@ -314,7 +336,19 @@ func splitOnDash(str string) ([]string, string) {
 		}
 	}
 	sep := fmt.Sprintf(" %s ", dash)
-	return strings.Split(str, sep), sep
+	result := strings.Split(str, sep)
+
+	if len(result) == 2 {
+		switch result[1] {
+		case articles.ru, articles.ja:
+			result[1] = articles.En
+		case related.ru, related.ja:
+			result[1] = related.En
+		case search.ru, search.ja:
+			result[1] = search.En
+		}
+	}
+	return result, sep
 }
 
 // MessageTextBody returns the text (if any) of a given message ID
