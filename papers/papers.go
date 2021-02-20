@@ -18,7 +18,7 @@ import (
 	"github.com/bzz/scholar-alert-digest/gmailutils"
 )
 
-var scholarURLPrefix = regexp.MustCompile(`http(s)?://scholar\.google\.\p{L}+/scholar_url\?url=`)
+var scholarURLPrefix = regexp.MustCompile(`http(s)?://scholar\.google\.\p{L}+(\.\p{L}+)?/scholar_url\?url=`)
 
 // Paper is a map key, thus aggregation take into account all it's fields.
 type Paper struct {
