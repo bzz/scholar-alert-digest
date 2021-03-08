@@ -31,24 +31,24 @@ const PaperTitle = ({paper}) => {
 }
 
 const PaperCompact = ({paper}) => (
-  <li>
+  <div>
     <details className="details">
       <summary>
         <PaperTitle paper={paper} />
       </summary>
       <div>{`${paper.Abstract.FirstLine} ${paper.Abstract.Rest}`}</div>
     </details>
-  </li>
+  </div>
 )
 
 const PaperDefault = ({paper}) => (
-  <li>
+  <div>
     <PaperTitle paper={paper} />
     <details className="details">
       <summary>{paper.Abstract.FirstLine}</summary>
       <div>{paper.Abstract.Rest}</div>
     </details>
-  </li>
+  </div>
 )
 
 const Paper = ({paper, mode}) => {
