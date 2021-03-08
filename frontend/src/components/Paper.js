@@ -17,8 +17,8 @@ const PaperTitle = ({paper}) => {
       ({`${refs.length}: `} {refs.map((ref, i, refs) => (
         <a
           className="paper__ref"
-          key={`${i}-${ref}`}
-          href={`https://mail.google.com/mail/#inbox/${ref}`}
+          key={`${i}-${ref.ID}`}
+          href={`https://mail.google.com/mail/#inbox/${ref.ID}`}
         >
           {ref.Title || i + 1}
           <Maybe cond={refs.length > (i + 1)}>
