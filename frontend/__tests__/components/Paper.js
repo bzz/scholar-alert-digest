@@ -2,9 +2,14 @@ import React from "react"
 import {render} from "@testing-library/react"
 import Paper from "components/Paper"
 
+const random = x => Math.floor(Math.random() * x)
+const randomString = (length = 8) => Math.random().toString(16).substr(2, length)
+
 test("renders paper correctly in default mode", () => {
-  const random = x => Math.floor(Math.random() * x)
-  const refs = ["1"].concat(Array.from({length: random(8)}, (_, i) => (i + 2).toString()))
+  const refs = Array.from({length: random(8)}, (_, i) => ({
+    ID: (i + 1).toString(),
+    Title: randomString(),
+  }))
 
   const paper = {
     Abstract: {
@@ -23,14 +28,18 @@ test("renders paper correctly in default mode", () => {
 
   expect(queryByText(/title/)).toBeTruthy()
   expect(queryByText(/author/)).toBeTruthy()
-  expect(queryByText(new RegExp(`(${refs.join("*")})`))).toBeTruthy()
   expect(queryByText(/first line/)).toBeTruthy()
   expect(queryByText(/rest of the abstract/)).toBeTruthy()
+  refs.forEach(({Title}) => {
+    expect(queryByText(new RegExp(Title))).toBeTruthy()
+  })
 })
 
 test("renders paper correctly in compact mode", () => {
-  const random = x => Math.floor(Math.random() * x)
-  const refs = ["1"].concat(Array.from({length: random(8)}, (_, i) => (i + 2).toString()))
+  const refs = Array.from({length: random(8)}, (_, i) => ({
+    ID: (i + 1).toString(),
+    Title: randomString(),
+  }))
 
   const paper = {
     Abstract: {
@@ -49,7 +58,9 @@ test("renders paper correctly in compact mode", () => {
 
   expect(queryByText(/title/)).toBeTruthy()
   expect(queryByText(/author/)).toBeTruthy()
-  expect(queryByText(new RegExp(`(${refs.join("*")})`))).toBeTruthy()
   expect(queryByText(/first line/)).toBeTruthy()
   expect(queryByText(/rest of the abstract/)).toBeTruthy()
+  refs.forEach(({Title}) => {
+    expect(queryByText(new RegExp(Title))).toBeTruthy()
+  })
 })
