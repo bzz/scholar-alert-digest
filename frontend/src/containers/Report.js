@@ -7,8 +7,10 @@ import Loader from "components/Loader"
 import Header from "components/ReportHeader"
 import Switch from "components/Switch"
 import {Either, Maybe} from "utils"
+import {modes} from "constants"
+import {toggleMode} from "effects"
 
-const Report = ({papers, stats, label, changeLabel, mode, toggleMode}) => {
+const Report = ({papers, stats, label, changeLabel, mode, setMode}) => {
   const [checked, setChecked] = useState(new Set())
   const [viewAll, setViewAll] = useState(true)
 
@@ -22,7 +24,12 @@ const Report = ({papers, stats, label, changeLabel, mode, toggleMode}) => {
       />
       <h2>
         New papers
-        <Switch label={mode} onClick={toggleMode} />
+        <Switch
+          label={mode}
+          onClick={
+            toggleMode({setMode})(mode === modes.default ? modes.compact : modes.default)
+          }
+        />
         <Maybe cond={checked.size > 0}>
           <Switch
             label={viewAll ? "hide selected" : "show all"}
@@ -63,7 +70,7 @@ const Report = ({papers, stats, label, changeLabel, mode, toggleMode}) => {
 }
 
 Report.propTypes = {
-  toggleMode: PropTypes.func.isRequired,
+  setMode: PropTypes.func.isRequired,
   mode: PropTypes.string.isRequired,
   changeLabel: PropTypes.func.isRequired,
   label: PropTypes.string.isRequired,

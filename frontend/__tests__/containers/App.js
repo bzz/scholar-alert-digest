@@ -15,6 +15,7 @@ jest.mock("effects", () => {
 
   return {
     init: jest.fn(),
+    toggleMode: () => () => jest.fn(),
     changeLabel,
     selectLabel,
   }
@@ -47,7 +48,7 @@ test("renders app container", () => {
     setLabels: jest.fn(),
     setLabel: jest.fn(),
     setPapers: jest.fn(),
-    toggleMode: jest.fn(),
+    setMode: jest.fn(),
     setView: jest.fn(),
   }
 
@@ -82,7 +83,7 @@ test("renders app container > labels", () => {
     setLabels: jest.fn(),
     setLabel: jest.fn(),
     setPapers: jest.fn(),
-    toggleMode: jest.fn(),
+    setMode: jest.fn(),
     setView: jest.fn(),
   }
 
@@ -118,7 +119,7 @@ test("renders app container > report", () => {
     setLabels: jest.fn(),
     setLabel: jest.fn(),
     setPapers: jest.fn(),
-    toggleMode: jest.fn(),
+    setMode: jest.fn(),
     setView: jest.fn(),
   }
 

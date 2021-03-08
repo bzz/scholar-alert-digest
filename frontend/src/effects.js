@@ -28,8 +28,9 @@ export const changeLabel = ({setView, setLabels}) => _ => {
   getLabels({setLabels})
 }
 
-export const init = ({setView, setLabels, setLabel, setPapers}) => {
+export const init = ({setView, setLabels, setLabel, setPapers, setMode}) => {
   const maybeLabel = JSON.parse(localStorage.getItem("label"))
+  const mode = JSON.parse(localStorage.getItem("mode"))
 
   if (maybeLabel) {
     const label = maybeLabel
@@ -40,6 +41,8 @@ export const init = ({setView, setLabels, setLabel, setPapers}) => {
   } else {
     getLabels({setLabels})
   }
+
+  setMode(mode)
 }
 
 export const selectLabel = ({setView, setLabel, setPapers}) => label => e => {
@@ -52,4 +55,10 @@ export const selectLabel = ({setView, setLabel, setPapers}) => label => e => {
     setPapers(papers)
     setView(views.report)
   })
+}
+
+export const toggleMode = ({setMode}) => mode => _ => {
+  localStorage.setItem("mode", JSON.stringify(mode))
+
+  setMode(mode)
 }

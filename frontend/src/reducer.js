@@ -22,10 +22,10 @@ const handlers = {
       papers: payload,
     }
   },
-  toggleMode: s => {
+  setMode: (s, {payload}) => {
     return {
       ...s,
-      mode: s.mode === modes.default ? modes.compact : modes.default,
+      mode: payload || modes.default,
     }
   },
   setView: (s, {payload}) => {

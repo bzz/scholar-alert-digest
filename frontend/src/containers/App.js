@@ -6,8 +6,8 @@ import {views} from "constants"
 import Labels from "containers/Labels"
 import Report from "containers/Report"
 
-const App = ({state, setView, setLabels, setLabel, setPapers, toggleMode}) => {
-  useEffect(() => init({setView, setLabels, setLabel, setPapers}), [])
+const App = ({state, setView, setLabels, setLabel, setPapers, setMode}) => {
+  useEffect(() => init({setView, setLabels, setLabel, setPapers, setMode}), [])
 
   if (state.view === views.report) {
     const {stats, papers} = state.papers.unread
@@ -19,7 +19,7 @@ const App = ({state, setView, setLabels, setLabel, setPapers, toggleMode}) => {
         label={state.currentLabel}
         changeLabel={changeLabel({setView, setLabels, setLabel})}
         mode={state.mode}
-        toggleMode={toggleMode}
+        setMode={setMode}
       />
     )
   }
@@ -54,7 +54,7 @@ const paperProps = PropTypes.shape({
 
 App.propTypes = {
   setView: PropTypes.func.isRequired,
-  toggleMode: PropTypes.func.isRequired,
+  setMode: PropTypes.func.isRequired,
   setPapers: PropTypes.func.isRequired,
   setLabel: PropTypes.func.isRequired,
   setLabels: PropTypes.func.isRequired,
