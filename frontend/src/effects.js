@@ -18,8 +18,11 @@ export const getLabels = ({setLabels}) => {
 }
 
 export const getMessages = ({label, setPapers}) => {
-  post("messages", {label})
-    .then(setPapers)
+  const hpo = JSON.parse(localStorage.getItem("hiddenPapers")) || {}
+  const hps = hpo[label] || []
+
+  return post("messages", {label})
+    .then(papers => setPapers({...papers, hidden: {papers: hps}}))
     .catch(handleError)
 }
 
@@ -51,14 +54,37 @@ export const selectLabel = ({setView, setLabel, setPapers}) => label => e => {
   setLabel(label)
   localStorage.setItem("label", JSON.stringify(label))
 
-  post("messages", {label}).then(papers => {
-    setPapers(papers)
-    setView(views.report)
-  })
+  getMessages({label, setPapers}).then(_ => setView(views.report))
 }
 
 export const toggleMode = ({setMode}) => mode => _ => {
   localStorage.setItem("mode", JSON.stringify(mode))
 
   setMode(mode)
+}
+
+export const hidePapers = ({setPapers, label, papers}) => papersToHide => {
+  const hpo = JSON.parse(localStorage.getItem("hiddenPapers")) || {}
+
+  if (hpo[label]) {
+    hpo[label] = hpo[label].concat(papersToHide)
+  } else {
+    hpo[label] = papersToHide
+  }
+
+  localStorage.setItem("hiddenPapers", JSON.stringify(hpo))
+
+  setPapers({
+    ...papers,
+    hidden: {...papers.hidden, papers: hpo[label]},
+  })
+}
+
+export const restorePapers = ({label}) => paper => {
+  const hpo = JSON.parse(localStorage.getItem("hiddenPapers")) || {}
+
+  if (hpo[label]) {
+    hpo[label] = hpo[label].filter(x => x !== paper)
+    localStorage.setItem("hiddenPapers", JSON.stringify(hpo))
+  }
 }

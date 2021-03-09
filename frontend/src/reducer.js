@@ -54,5 +54,8 @@ export const defaultState = {
         time: "?",
       },
     },
+    hidden: {
+      papers: [],
+    },
   },
 }

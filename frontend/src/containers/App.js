@@ -10,16 +10,14 @@ const App = ({state, setView, setLabels, setLabel, setPapers, setMode}) => {
   useEffect(() => init({setView, setLabels, setLabel, setPapers, setMode}), [])
 
   if (state.view === views.report) {
-    const {stats, papers} = state.papers.unread
-
     return (
       <Report
-        stats={stats}
-        papers={papers}
+        papers={state.papers}
         label={state.currentLabel}
         changeLabel={changeLabel({setView, setLabels, setLabel})}
         mode={state.mode}
         setMode={setMode}
+        setPapers={setPapers}
       />
     )
   }
