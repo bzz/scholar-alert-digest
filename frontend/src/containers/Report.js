@@ -10,7 +10,7 @@ import {Either, Maybe} from "utils"
 import {modes} from "constants"
 import {toggleMode, hidePapers, restorePapers} from "effects"
 
-const Report = ({papers, label, changeLabel, mode, setMode, setPapers}) => {
+const Report = ({loading, papers, label, changeLabel, mode, setMode, setPapers}) => {
   const hideSelectedPapers = hidePapers({setPapers, label, papers})
   const restoreSelectedPapers = restorePapers({label})
   const {stats} = papers.unread
@@ -60,7 +60,8 @@ const Report = ({papers, label, changeLabel, mode, setMode, setPapers}) => {
           />
         </Maybe>
       </h2>
-      <Either cond={ps.length > 0}>
+      <Either cond={loading}>
+        <Loader />
         <ul className={`main__papers main__papers--${mode}`}>
           {
             ps.map((paper, i) => (
@@ -85,7 +86,6 @@ const Report = ({papers, label, changeLabel, mode, setMode, setPapers}) => {
             ))
           }
         </ul>
-        <Loader />
       </Either>
     </div>
   )
@@ -96,6 +96,7 @@ Report.propTypes = {
   setPapers: PropTypes.func.isRequired,
   mode: PropTypes.string.isRequired,
   changeLabel: PropTypes.func.isRequired,
+  loading: PropTypes.bool.isRequired,
   label: PropTypes.string.isRequired,
   papers: PropTypes.shape({
     read: PropTypes.shape({papers: PropTypes.arrayOf(PropTypes.object)}),

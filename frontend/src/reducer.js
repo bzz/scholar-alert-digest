@@ -4,6 +4,12 @@ import {getActions, createReducer} from "utils"
 import {modes, views} from "constants"
 
 const handlers = {
+  setLoading: (s, {payload}) => {
+    return {
+      ...s,
+      loading: payload,
+    }
+  },
   setLabels: (s, {payload: {labels}}) => {
     return {
       ...s,
@@ -39,6 +45,7 @@ const handlers = {
 export const actions = getActions(handlers)
 export default createReducer(handlers)
 export const defaultState = {
+  loading: true,
   labels: [],
   view: views.labels,
   mode: modes.default,

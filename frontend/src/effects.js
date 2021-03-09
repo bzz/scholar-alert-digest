@@ -31,16 +31,18 @@ export const changeLabel = ({setView, setLabels}) => _ => {
   getLabels({setLabels})
 }
 
-export const init = ({setView, setLabels, setLabel, setPapers, setMode}) => {
+export const init = ({setView, setLabels, setLabel, setPapers, setMode, setLoading}) => {
   const maybeLabel = JSON.parse(localStorage.getItem("label"))
   const mode = JSON.parse(localStorage.getItem("mode"))
+
+  setLoading(true)
 
   if (maybeLabel) {
     const label = maybeLabel
 
     setView(views.report)
     setLabel(label)
-    getMessages({label, setPapers})
+    getMessages({label, setPapers}).then(_ => setLoading(false))
   } else {
     getLabels({setLabels})
   }
@@ -48,13 +50,15 @@ export const init = ({setView, setLabels, setLabel, setPapers, setMode}) => {
   setMode(mode)
 }
 
-export const selectLabel = ({setView, setLabel, setPapers}) => label => e => {
+export const selectLabel = ({setView, setLabel, setPapers, setLoading}) => label => e => {
   e.preventDefault()
 
   setLabel(label)
   localStorage.setItem("label", JSON.stringify(label))
 
-  getMessages({label, setPapers}).then(_ => setView(views.report))
+  getMessages({label, setPapers})
+    .then(_ => setView(views.report))
+    .then(_ => setLoading(false))
 }
 
 export const toggleMode = ({setMode}) => mode => _ => {

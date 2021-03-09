@@ -5,13 +5,13 @@ import {selectLabel} from "effects"
 
 import "containers/containers.css"
 
-const Labels = ({currentLabel, labels, setLabel, setPapers, setView}) => {
+const Labels = ({currentLabel, labels, setLabel, setPapers, setView, setLoading}) => {
   const [checked, check] = useState(currentLabel || labels[0])
 
   return (
     <form
       data-testid="labels"
-      onSubmit={selectLabel({setView, setLabel, setPapers})(checked)}
+      onSubmit={selectLabel({setView, setLabel, setPapers, setLoading})(checked)}
     >
       <h1>Select a gmail label to aggregate</h1>
       <ul className="labels__list">
@@ -49,6 +49,7 @@ Labels.propTypes = {
   setLabel: PropTypes.func.isRequired,
   setPapers: PropTypes.func.isRequired,
   setView: PropTypes.func.isRequired,
+  setLoading: PropTypes.func.isRequired,
 }
 
 export default Labels

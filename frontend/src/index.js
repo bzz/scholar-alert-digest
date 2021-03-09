@@ -8,7 +8,7 @@ import App from "containers/App"
 
 const Container = () => {
   const [state, dispatch] = useReducer(reducer, defaultState)
-  const {setView, setLabels, setLabel, setPapers, setMode} = actions(dispatch)
+  const {setView, setLabels, setLabel, setPapers, setMode, setLoading} = actions(dispatch)
 
   return (
     <App
@@ -18,6 +18,7 @@ const Container = () => {
       setLabel={setLabel}
       setPapers={setPapers}
       setMode={setMode}
+      setLoading={setLoading}
     />
   )
 }

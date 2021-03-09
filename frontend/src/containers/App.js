@@ -6,12 +6,13 @@ import {views} from "constants"
 import Labels from "containers/Labels"
 import Report from "containers/Report"
 
-const App = ({state, setView, setLabels, setLabel, setPapers, setMode}) => {
-  useEffect(() => init({setView, setLabels, setLabel, setPapers, setMode}), [])
+const App = ({state, setView, setLabels, setLabel, setPapers, setMode, setLoading}) => {
+  useEffect(() => init({setView, setLabels, setLabel, setPapers, setMode, setLoading}), [])
 
   if (state.view === views.report) {
     return (
       <Report
+        loading={state.loading}
         papers={state.papers}
         label={state.currentLabel}
         changeLabel={changeLabel({setView, setLabels, setLabel})}
@@ -30,6 +31,7 @@ const App = ({state, setView, setLabels, setLabel, setPapers, setMode}) => {
         setLabel={setLabel}
         setPapers={setPapers}
         setView={setView}
+        setLoading={setLoading}
       />
     )
   }
@@ -51,12 +53,14 @@ const paperProps = PropTypes.shape({
 })
 
 App.propTypes = {
+  setLoading: PropTypes.func.isRequired,
   setView: PropTypes.func.isRequired,
   setMode: PropTypes.func.isRequired,
   setPapers: PropTypes.func.isRequired,
   setLabel: PropTypes.func.isRequired,
   setLabels: PropTypes.func.isRequired,
   state: PropTypes.shape({
+    loading: PropTypes.bool.isRequired,
     currentLabel: PropTypes.string,
     labels: PropTypes.arrayOf(PropTypes.string).isRequired,
     view: PropTypes.string.isRequired,
