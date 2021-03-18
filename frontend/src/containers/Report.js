@@ -44,18 +44,21 @@ const Report = ({loading, papers, label, changeLabel, mode, setMode, setPapers})
             toggleMode({setMode})(mode === modes.default ? modes.compact : modes.default)
           }
         />
-        <Maybe cond={checked.size > 0 || (viewAll && papers.hidden.papers.length > 0)}>
+        <Switch
+          label="hide selected"
+          disabled={checked.size === 0}
+          onClick={_ => {
+            setChecked(new Set())
+            hideSelectedPapers([...checked])
+            setViewAll(false)
+          }}
+        />
+        <Maybe cond={viewAll && papers.hidden.papers.length > 0}>
           <Switch
-            label={checked.size > 0 ? "hide selected" : "show all"}
+            label="show all"
             onClick={_ => {
-              if (checked.size > 0) {
-                setChecked(new Set())
-                hideSelectedPapers([...checked])
-                setViewAll(false)
-              } else {
-                setViewAll(false)
-                setChecked(new Set(papers.hidden.papers))
-              }
+              setChecked(new Set(papers.hidden.papers))
+              setViewAll(false)
             }}
           />
         </Maybe>
