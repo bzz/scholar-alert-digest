@@ -26,6 +26,7 @@ test("renders labels container w/o currentLabel", () => {
     setLabel: jest.fn(),
     setPapers: jest.fn(),
     setView: jest.fn(),
+    setLoading: jest.fn(),
   }
 
   const {getByLabelText, getByTestId} = render(
@@ -55,6 +56,7 @@ test("renders labels container w/ currentLabel", () => {
     setLabel: jest.fn(),
     setPapers: jest.fn(),
     setView: jest.fn(),
+    setLoading: jest.fn(),
   }
 
   const {getByLabelText, getByTestId} = render(

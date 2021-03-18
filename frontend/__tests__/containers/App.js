@@ -10,6 +10,9 @@ import {modes, views} from "constants"
 jest.mock("effects", () => {
   const changeLabel = jest.fn()
   const selectLabel = jest.fn()
+  const hidePapers = jest.fn()
+  const restorePapers = jest.fn()
+
   changeLabel.mockReturnValue(jest.fn)
   selectLabel.mockReturnValue(jest.fn)
 
@@ -18,6 +21,8 @@ jest.mock("effects", () => {
     toggleMode: () => () => jest.fn(),
     changeLabel,
     selectLabel,
+    hidePapers,
+    restorePapers,
   }
 })
 
@@ -30,9 +35,13 @@ test("renders app container", () => {
     state: {
       view: views.labels,
       mode: modes.default,
+      loading: false,
       labels: [],
       papers: {
         read: {
+          papers: [],
+        },
+        hidden: {
           papers: [],
         },
         unread: {
@@ -50,6 +59,7 @@ test("renders app container", () => {
     setPapers: jest.fn(),
     setMode: jest.fn(),
     setView: jest.fn(),
+    setLoading: jest.fn(),
   }
 
   const {container} = render(
@@ -65,9 +75,13 @@ test("renders app container > labels", () => {
     state: {
       view: views.labels,
       mode: modes.default,
+      loading: false,
       labels: ["label1", "label2"],
       papers: {
         read: {
+          papers: [],
+        },
+        hidden: {
           papers: [],
         },
         unread: {
@@ -85,6 +99,7 @@ test("renders app container > labels", () => {
     setPapers: jest.fn(),
     setMode: jest.fn(),
     setView: jest.fn(),
+    setLoading: jest.fn(),
   }
 
   const {queryByTestId} = render(
@@ -100,10 +115,14 @@ test("renders app container > report", () => {
     state: {
       view: views.report,
       mode: modes.default,
+      loading: false,
       currentLabel: "label1",
       labels: ["label1", "label2"],
       papers: {
         read: {
+          papers: [],
+        },
+        hidden: {
           papers: [],
         },
         unread: {
@@ -121,6 +140,7 @@ test("renders app container > report", () => {
     setPapers: jest.fn(),
     setMode: jest.fn(),
     setView: jest.fn(),
+    setLoading: jest.fn(),
   }
 
   const {queryByTestId} = render(
