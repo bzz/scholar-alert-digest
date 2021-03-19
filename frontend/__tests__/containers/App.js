@@ -2,7 +2,7 @@
 
 import React from "react"
 import {render} from "@testing-library/react"
-import App from "containers/App"
+import initApp from "containers/App"
 
 import {init, changeLabel} from "effects"
 import {modes, views} from "constants"
@@ -54,6 +54,9 @@ test("renders app container", () => {
         },
       },
     },
+  }
+
+  const actions = {
     setLabels: jest.fn(),
     setLabel: jest.fn(),
     setPapers: jest.fn(),
@@ -61,6 +64,8 @@ test("renders app container", () => {
     setView: jest.fn(),
     setLoading: jest.fn(),
   }
+
+  const App = initApp(actions)
 
   const {container} = render(
     <App {...props} />,
@@ -94,6 +99,9 @@ test("renders app container > labels", () => {
         },
       },
     },
+  }
+
+  const actions = {
     setLabels: jest.fn(),
     setLabel: jest.fn(),
     setPapers: jest.fn(),
@@ -101,6 +109,8 @@ test("renders app container > labels", () => {
     setView: jest.fn(),
     setLoading: jest.fn(),
   }
+
+  const App = initApp(actions)
 
   const {queryByTestId} = render(
     <App {...props} />,
@@ -135,6 +145,9 @@ test("renders app container > report", () => {
         },
       },
     },
+  }
+
+  const actions = {
     setLabels: jest.fn(),
     setLabel: jest.fn(),
     setPapers: jest.fn(),
@@ -142,6 +155,8 @@ test("renders app container > report", () => {
     setView: jest.fn(),
     setLoading: jest.fn(),
   }
+
+  const App = initApp(actions)
 
   const {queryByTestId} = render(
     <App {...props} />,

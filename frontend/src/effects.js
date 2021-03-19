@@ -61,7 +61,7 @@ export const selectLabel = ({setView, setLabel, setPapers, setLoading}) => label
     .then(_ => setLoading(false))
 }
 
-export const toggleMode = ({setMode}) => mode => _ => {
+export const toggleMode = ({setMode}) => mode => {
   localStorage.setItem("mode", JSON.stringify(mode))
 
   setMode(mode)
