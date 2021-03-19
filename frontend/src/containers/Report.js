@@ -61,7 +61,7 @@ const initReport = actions => {
             <Switch
               label="show all"
               onClick={_ => {
-                setChecked(new Set(hidden))
+                setChecked(new Set([...checked, ...hidden]))
                 setPapersHidden(false)
               }}
             />

@@ -71,7 +71,8 @@ export const hidePapers = ({setPapers, label, papers}) => papersToHide => {
   const hpo = JSON.parse(localStorage.getItem("hiddenPapers")) || {}
 
   if (hpo[label]) {
-    hpo[label] = hpo[label].concat(papersToHide)
+    const hidden = new Set(hpo[label].concat(papersToHide))
+    hpo[label] = [...hidden]
   } else {
     hpo[label] = papersToHide
   }
