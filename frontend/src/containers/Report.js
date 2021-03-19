@@ -23,13 +23,13 @@ const initReport = actions => {
     const [checked, setChecked] = useState(new Set())
     const [papersHidden, setPapersHidden] = useState(hidden.length > 0)
 
-    const ps = papersHidden ?
-      unread.filter(x => hidden.indexOf(x.Title) === -1) :
-      unread
-
     useEffect(() => {
       setPapersHidden(hidden.length > 0)
     }, [hidden])
+
+    const ps = papersHidden ?
+      unread.filter(x => hidden.indexOf(x.Title) === -1) :
+      unread
 
     return (
       <div data-testid="report">
@@ -52,9 +52,9 @@ const initReport = actions => {
             label="hide selected"
             disabled={checked.size === 0}
             onClick={_ => {
-              setChecked(new Set())
               hideSelectedPapers([...checked])
-              setPapersHidden(false)
+              setChecked(new Set())
+              setPapersHidden(true)
             }}
           />
           <Maybe cond={papersHidden}>
