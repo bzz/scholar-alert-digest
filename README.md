@@ -24,7 +24,7 @@ To use this tool for generating a report on new papers from Google Scholar, do t
  3. Create a Gmail filter, moving all those emails under a dedicated Label
  4. Run this tool to get an aggregated report (in Markdown or HTML) of all the papers from the unread emails
 
-For more details, please reffer to the [documentation](/docs).
+For more details, please refer to the [documentation](/docs).
 
 
 # Install
