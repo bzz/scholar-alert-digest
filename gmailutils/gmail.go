@@ -44,7 +44,7 @@ import (
 
 // Instructions are user manual for OAuth app configuration from Gmail.
 const Instructions = `Please follow https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the
-in oreder to:
+in order to:
  - create a new "Quickstart" API project under your account
  - enable GMail API on it
  - download OAuth 2.0 credentials
