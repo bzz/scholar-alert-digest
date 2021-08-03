@@ -72,6 +72,7 @@ var (
 	outputJSON = flag.Bool("json", false, "output report data in JSON")
 	compact    = flag.Bool("compact", false, "output report in compact format (>100 papers)")
 	markRead   = flag.Bool("mark", false, "marks all aggregated emails as read")
+	archive    = flag.Bool("archive", false, "removes emails from inbox")
 	read       = flag.Bool("read", false, "include read emails to a separate section of the report")
 	authors    = flag.Bool("authors", false, "include paper authors in the report")
 	refs       = flag.Bool("refs", false, "include orignin references to Gmail messages in report")
@@ -170,6 +171,9 @@ func main() {
 		//  use existing report from FS \w a checkbox state set by the user
 		//  only mark email as "read" iff all the links are checked off
 		gmailutils.ModifyMsgsDelLabel(srv, user, urMsgs, "UNREAD")
+		if *archive {
+			gmailutils.ModifyMsgsDelLabel(srv, user, urMsgs, "INBOX")
+		}
 	}
 
 	totalErrCnt := unreadStats.Errs + readStats.Errs
