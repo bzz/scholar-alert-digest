@@ -4,6 +4,12 @@ import {getActions, createReducer} from "utils"
 import {modes, views} from "constants"
 
 const handlers = {
+  setLoading: (s, {payload}) => {
+    return {
+      ...s,
+      loading: payload,
+    }
+  },
   setLabels: (s, {payload: {labels}}) => {
     return {
       ...s,
@@ -22,10 +28,10 @@ const handlers = {
       papers: payload,
     }
   },
-  toggleMode: s => {
+  setMode: (s, {payload}) => {
     return {
       ...s,
-      mode: s.mode === modes.default ? modes.compact : modes.default,
+      mode: payload || modes.default,
     }
   },
   setView: (s, {payload}) => {
@@ -39,6 +45,7 @@ const handlers = {
 export const actions = getActions(handlers)
 export default createReducer(handlers)
 export const defaultState = {
+  loading: true,
   labels: [],
   view: views.labels,
   mode: modes.default,
@@ -53,6 +60,9 @@ export const defaultState = {
         papers: 0,
         time: "?",
       },
+    },
+    hidden: {
+      papers: [],
     },
   },
 }

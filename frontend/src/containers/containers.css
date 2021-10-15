@@ -4,6 +4,19 @@
   list-style: none;
 }
 
+.main__papers-paper {
+  display: table;
+}
+
+.main__papers-paper > * {
+  display: table-cell;
+}
+
+.main__papers-paper > input {
+  margin-right: 0.6em;
+  cursor: pointer;
+}
+
 .markdown-body .main__papers--compact .details {
   margin: 0;
 }
@@ -41,4 +54,3 @@
   height: 3em;
   cursor: pointer;
 }
-
