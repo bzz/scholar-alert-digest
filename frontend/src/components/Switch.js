@@ -4,7 +4,7 @@ import PropTypes from "prop-types"
 import "components/components.css"
 
 const Switch = ({label, onClick, disabled = false}) => (
-  <button className="switch" type="button" onClick={onClick} disabled={disabled}>
+  <button className="clickable-label" type="button" onClick={onClick} disabled={disabled}>
     {label}
   </button>
 )
