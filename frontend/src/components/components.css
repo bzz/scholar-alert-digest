@@ -42,6 +42,18 @@
   outline: none;
 }
 
+.clickable-label--link {
+  color: unset !important;
+  font-weight: normal;
+}
+
+.clickable-label--link:hover {
+  text-decoration: none !important;
+}
+
+.clickable-label--disabled {
+  color: #6e6e6e !important;
+}
 /********** Loader **********/
 /* taken from https://codepen.io/megatroncoder/pen/Xqeyva?editors=0100 */
 
