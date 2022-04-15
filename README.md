@@ -51,8 +51,8 @@ go run main.go -test
 
 ## Configure
 
-Turn on Gmail API & download `credentials.json` following [these steps](https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the).</br>
-_That will create a new 'Quickstart' app in API console under your account and authorize it to get access to your Gmail_
+Turn on Gmail API & download `credentials.json` following [these steps](https://developers.google.com/gmail/api/quickstart/go#prerequisites).</br>
+_That will guide you though creation of a new project, enabling the Gmail API and geting authorization credentials for a desktop application, in order to get access to your email messages at Gmail_
 
 
 To find your specific label name:
