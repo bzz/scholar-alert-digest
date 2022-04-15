@@ -43,11 +43,11 @@ import (
 )
 
 // Instructions are user manual for OAuth app configuration from Gmail.
-const Instructions = `Please follow https://developers.google.com/gmail/api/quickstart/go#step_1_turn_on_the
-in order to:
- - create a new "Quickstart" API project under your account
- - enable GMail API on it
- - download OAuth 2.0 credentials
+const Instructions = `Please make sure that you have:
+ - a project with Gmail API enabled
+   https://developers.google.com/workspace/guides/create-project
+ - download "OAuth client ID" credentials for desktop app, saved as 'credentials.json'
+   https://developers.google.com/workspace/guides/create-credentials#desktop-app
 `
 
 // NewClient a client configured with OAuth using 'credentials.json' and a 'token.json'.
