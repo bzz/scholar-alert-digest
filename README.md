@@ -51,8 +51,8 @@ go run main.go -test
 
 ## Configure
 
-Turn on Gmail API & download `credentials.json` following [these steps](https://developers.google.com/gmail/api/quickstart/go#prerequisites).</br>
-_That will guide you though creation of a new project, enabling the Gmail API and geting authorization credentials for a desktop application, in order to get access to your email messages at Gmail_
+Enable "Gmail API" Google Cloud Platform (GCP) project & download `credentials.json` following [these steps](https://developers.google.com/gmail/api/quickstart/go#prerequisites).</br>
+_That will guide you through creation of a new GCP project, enabling the Gmail API and geting "OAuth client ID" - [authorization credentials for a desktop application](https://developers.google.com/workspace/guides/create-credentials#oauth-client-id) that are needed in order to get access to your email messages at Gmail_
 
 
 To find your specific label name:
