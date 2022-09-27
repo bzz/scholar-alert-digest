@@ -6,9 +6,23 @@ import Paper from "components/Paper"
 import Loader from "components/Loader"
 import Header from "components/ReportHeader"
 import Switch from "components/Switch"
-import {Either, Maybe} from "utils"
+import Download from "components/Download"
+import {Either, Maybe, fromMaybe} from "utils"
 import {modes as m} from "constants"
 import {toggleMode, hidePapers, restorePapers} from "effects"
+
+const getEncodedPapers = hiddenPapers => fromMaybe(null)(_ => {
+  // unicode breaks btoa
+  const formattedPapers = hiddenPapers.map(paper => ({
+    ...paper,
+    Abstract: {
+      ...paper.Abstract,
+      Rest: paper.Abstract.Rest.replace("…", "..."),
+    },
+  }))
+
+  return btoa(JSON.stringify({hiddenPapers: formattedPapers}))
+})
 
 const initReport = actions => {
   const {changeLabel, setPapers} = actions
@@ -27,9 +41,20 @@ const initReport = actions => {
       setPapersHidden(hidden.length > 0)
     }, [hidden])
 
-    const ps = papersHidden ?
-      unread.filter(x => hidden.indexOf(x.Title) === -1) :
-      unread
+    const [visiblePapers, selectedPapers] =
+      unread.reduce(([visible, selected], paper) => {
+        if (!hidden.includes(paper.Title)) {
+          visible.push(paper)
+        }
+
+        if (checked.has(paper.Title)) {
+          selected.push(paper)
+        }
+
+        return [visible, selected]
+      }, [[], []])
+
+    const papersToRender = papersHidden ? visiblePapers : unread
 
     return (
       <div data-testid="report">
@@ -48,6 +73,15 @@ const initReport = actions => {
               toggleMode(actions)(nextMode)
             }}
           />
+          <Maybe cond={!papersHidden && !loading}>
+            <Download
+              label="download selected"
+              disabled={checked.size === 0}
+              filename="scholar-alert-digest-hidden-papers.json"
+              filetype="application/json"
+              content={getEncodedPapers(selectedPapers)}
+            />
+          </Maybe>
           <Switch
             label="hide selected"
             disabled={checked.size === 0}
@@ -71,7 +105,7 @@ const initReport = actions => {
           <Loader />
           <ul className={`main__papers main__papers--${mode}`}>
             {
-              ps.map((paper, i) => (
+              papersToRender.map((paper, i) => (
                 <li key={paper.Title} className="main__papers-paper">
                   <input
                     id={`paper-checkbox-${i}`}
