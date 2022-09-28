@@ -82,6 +82,9 @@ func ExtractAndAggPapersFromMsgs(msgs []*gmail.Message, authors, refs bool) (*St
 		papers, err := extractPapersFromMsg(m, authors)
 		if err != nil {
 			st.Errs++
+			// TODO(#79): we only count number of emails that fail to parse,
+			// but some papers are also skipped inside, with only an STDERR log
+			// log.Print(err)
 			continue
 		}
 
@@ -134,7 +137,7 @@ func extractPapersFromMsg(m *gmail.Message, inclAuthors bool) ([]*Paper, error) 
 	}
 
 	if len(titles) != len(urls) {
-		e := fmt.Errorf("titles %d != %d urls in %q", len(titles), len(urls), subj)
+		e := fmt.Errorf("%d titles but only %d urls found in email:%q", len(titles), len(urls), subj)
 		return nil, e
 	}
 

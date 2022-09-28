@@ -178,7 +178,7 @@ func main() {
 
 	totalErrCnt := unreadStats.Errs + readStats.Errs
 	if totalErrCnt != 0 {
-		log.Printf("Errors: %d\n", totalErrCnt)
+		log.Printf("Errors: failed to parse %d email (more individual papeprs might be skipped, see logs above)\n", totalErrCnt)
 	}
 }
 
