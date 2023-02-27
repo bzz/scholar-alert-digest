@@ -120,7 +120,7 @@ To include references to original email into the report, do:
 go run main.go -refs
 ```
 
-# Webserver
+# Web Server
 The Web UI exposes HTML report generation to multiple concurrent users.
 
 ## Test
