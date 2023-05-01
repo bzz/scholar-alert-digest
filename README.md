@@ -6,8 +6,10 @@ a Gmail label from the Google Scholar alerts, grouping papers by title and produ
 
 * [How to use](#how-to-use)
 * [Setup](#setup)
+   * [Building a binary (optional)](#building-a-binary-optional)
+   * [Configure google cloud](#configure-google-cloud)
 * [CLI](#cli)
-* [Web server](#web-server)
+* [Web Server](#web-server)
 * [License](#license)
 
 # How to use
