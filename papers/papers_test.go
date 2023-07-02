@@ -34,6 +34,16 @@ func TestScholarURLExtraction(t *testing.T) {
 			"https://www.jstage.jst.go.jp/article/transinf/E102.D/12/E102.D_2019MPP0005/_article/-char/ja/", false,
 		},
 		{
+			".co.jp",
+			"http://scholar.google.co.jp/scholar_url?url=https://dl.acm.org/doi/abs/10.1145/3379337.3415831&hl=ja&sa=X&d=17323521467117279604&ei=2H-RX7X0BIKOygSV-YCoCQ&scisig=AAGBfm0sUgXNPcsegVW1Ds0b1UxEXge1OA&nossl=1&oi=scholaralrt",
+			"https://dl.acm.org/doi/abs/10.1145/3379337.3415831", false,
+		},
+		{
+			".com.au",
+			"http://scholar.google.com.au/scholar_url?url=https://dl.acm.org/doi/abs/10.1145/3379337.3415831&hl=ja&sa=X&d=17323521467117279604&ei=2H-RX7X0BIKOygSV-YCoCQ&scisig=AAGBfm0sUgXNPcsegVW1Ds0b1UxEXge1OA&nossl=1&oi=scholaralrt",
+			"https://dl.acm.org/doi/abs/10.1145/3379337.3415831", false,
+		},	
+		{
 			"anothe TLD, short URL",
 			"https://scholar.google.au/scholar_url?url=http://www.test.com&hl=1",
 			"http://www.test.com", false,
