@@ -2,7 +2,7 @@
 
 import React from "react"
 import {fireEvent, render} from "@testing-library/react"
-import Labels from "containers/Labels"
+import initLabels from "containers/Labels"
 
 import {selectLabel} from "effects"
 
@@ -23,10 +23,16 @@ test("renders labels container w/o currentLabel", () => {
   const props = {
     currentLabel: null,
     labels: ["label1", "label2"],
+  }
+
+  const actions = {
     setLabel: jest.fn(),
     setPapers: jest.fn(),
     setView: jest.fn(),
+    setLoading: jest.fn(),
   }
+
+  const Labels = initLabels(actions)
 
   const {getByLabelText, getByTestId} = render(
     <Labels {...props} />,
@@ -52,10 +58,16 @@ test("renders labels container w/ currentLabel", () => {
   const props = {
     currentLabel: "label2",
     labels: ["label1", "label2"],
+  }
+
+  const actions = {
     setLabel: jest.fn(),
     setPapers: jest.fn(),
     setView: jest.fn(),
+    setLoading: jest.fn(),
   }
+
+  const Labels = initLabels(actions)
 
   const {getByLabelText, getByTestId} = render(
     <Labels {...props} />,
